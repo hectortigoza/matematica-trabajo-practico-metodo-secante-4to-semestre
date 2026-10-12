@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Método de la Secante</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231c3f6e'/%3E%3Cpath d='M4 24 Q14 22 18 14 T29 5' stroke='%23fff' stroke-width='2.4' fill='none'/%3E%3Cpath d='M3 27 L29 9' stroke='%23ff8a7d' stroke-width='2' stroke-dasharray='3 2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="fuentes/fuentes.css">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script>
+    // Aplica el tema guardado antes de pintar (evita el parpadeo)
+    try { var t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+
+<header class="barra">
+  <div class="marca">
+    <svg class="marca-icono" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M4 31 Q16 29 21 18 T37 6" class="marca-curva"/>
+      <path d="M2 35 L38 11" class="marca-secante"/>
+      <circle cx="9.5" cy="31.3" r="2.4" class="marca-punto"/>
+      <circle cx="28" cy="19" r="2.4" class="marca-punto"/>
+    </svg>
+    <div>
+      <h1>Método de la Secante</h1>
+      <p>Cálculo Numérico · Matemática IV</p>
+    </div>
+  </div>
+  <div class="barra-acciones">
+    <button class="boton-icono" id="btn-tema" type="button" title="Cambiar tema claro / oscuro" aria-label="Cambiar tema">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+    </button>
+    <button class="boton-texto" id="btn-salir" type="button" title="Detener el servidor y cerrar">Salir</button>
+  </div>
+</header>
+
+<div class="disposicion">
+
+  <!-- ============================ PANEL DEL PROBLEMA ============================ -->
+  <aside class="panel-problema" aria-label="Datos del problema">
+    <form id="formulario" novalidate autocomplete="off">
+
+      <div class="campo campo-funcion" data-campo="funcion">
+        <label for="funcion">Función</label>
+        <div class="entrada-funcion">
+          <span class="prefijo-fx" aria-hidden="true"><i>f</i>(<i>x</i>) =</span>
+          <input id="funcion" name="funcion" type="text" spellcheck="false" placeholder="x^3 - 4x - 1"
+                 aria-describedby="vista-funcion">
+        </div>
+        <div class="vista-funcion" id="vista-funcion" aria-live="polite"></div>
+        <div class="teclado" id="teclado" aria-label="Teclado matemático">
+          <button type="button" data-insertar="x">x</button>
+          <button type="button" data-insertar="^">xⁿ</button>
+          <button type="button" data-insertar="sqrt()">√</button>
+          <button type="button" data-insertar="pi">π</button>
+          <button type="button" data-insertar="e">e</button>
+          <button type="button" data-insertar="e^()">eˣ</button>
+          <button type="button" data-insertar="ln()">ln</button>
+          <button type="button" data-insertar="log()">log</button>
+          <button type="button" data-insertar="sin()">sin</button>
+          <button type="button" data-insertar="cos()">cos</button>
+          <button type="button" data-insertar="tan()">tan</button>
+          <button type="button" data-insertar="abs()">|x|</button>
+        </div>
+        <p class="error-campo" role="alert"></p>
+      </div>
+
+      <fieldset class="grupo">
+        <legend>Valores iniciales</legend>
+        <div class="fila-2">
+          <div class="campo" data-campo="x0">
+            <label for="x0"><i>x</i>₀</label>
+            <input id="x0" name="x0" type="text" inputmode="decimal" placeholder="1">
+            <p class="error-campo" role="alert"></p>
+          </div>
+          <div class="campo" data-campo="x1">
+            <label for="x1"><i>x</i>₁</label>
+            <input id="x1" name="x1" type="text" inputmode="decimal" placeholder="2">
+            <p class="error-campo" role="alert"></p>
+          </div>
+        </div>
+        <p class="bolzano-vivo" id="bolzano-vivo" aria-live="polite"></p>
+        <button type="button" class="enlace" id="btn-buscar-abrir">Buscar dónde cambia de signo f(x)</button>
+        <div class="buscador" id="buscador" hidden>
+          <div class="fila-2">
+            <div class="campo" data-campo="desde">
+              <label for="desde">Desde</label>
+              <input id="desde" type="text" inputmode="decimal" value="-10">
+              <p class="error-campo" role="alert"></p>
+            </div>
+            <div class="campo" data-campo="hasta">
+              <label for="hasta">Hasta</label>
+              <input id="hasta" type="text" inputmode="decimal" value="10">
+              <p class="error-campo" role="alert"></p>
+            </div>
+          </div>
+          <button type="button" class="boton-secundario" id="btn-buscar">Buscar intervalos</button>
+          <ul class="lista-intervalos" id="lista-intervalos"></ul>
+        </div>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend>Criterio de parada</legend>
+        <div class="segmentado" role="radiogroup" aria-label="Criterio de parada">
+          <label><input type="radio" name="criterio" value="absoluto" checked><span>|x<sub>n+1</sub> − x<sub>n</sub>|</span></label>
+          <label><input type="radio" name="criterio" value="relativo"><span>ε<sub>a</sub> %</span></label>
+          <label><input type="radio" name="criterio" value="residuo"><span>|f(x<sub>n+1</sub>)|</span></label>
+        </div>
+        <p class="ayuda" id="ayuda-criterio"></p>
+        <div class="fila-2">
+          <div class="campo" data-campo="tolerancia">
+            <label for="tolerancia">Tolerancia</label>
+            <input id="tolerancia" name="tolerancia" type="text" inputmode="decimal" value="0.0001">
+            <p class="error-campo" role="alert"></p>
+          </div>
+          <div class="campo" data-campo="max_iteraciones">
+            <label for="max_iteraciones">Máx. iteraciones</label>
+            <input id="max_iteraciones" name="max_iteraciones" type="text" inputmode="numeric" value="50">
+            <p class="error-campo" role="alert"></p>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="decimales">Decimales mostrados <output id="decimales-valor">8</output></label>
+          <input id="decimales" type="range" min="4" max="14" value="8">
+        </div>
+      </fieldset>
+
+      <button type="submit" class="boton-principal" id="btn-resolver">
+        Resolver
+        <kbd>Enter</kbd>
+      </button>
+    </form>
+
+    <section class="ejemplos" aria-labelledby="titulo-ejemplos">
+      <h2 id="titulo-ejemplos">Ejemplos para probar</h2>
+      <ul id="lista-ejemplos"></ul>
+    </section>
+  </aside>
+
+  <!-- ============================ ÁREA PRINCIPAL ============================ -->
+  <main class="area">
+    <nav class="pestanas" role="tablist" aria-label="Secciones">
+      <button role="tab" id="tab-resultado" aria-controls="vista-resultado" aria-selected="true">Resultado</button>
+      <button role="tab" id="tab-pasos" aria-controls="vista-pasos" aria-selected="false">Paso a paso</button>
+      <button role="tab" id="tab-convergencia" aria-controls="vista-convergencia" aria-selected="false">Convergencia</button>
+      <button role="tab" id="tab-comparacion" aria-controls="vista-comparacion" aria-selected="false">Comparar métodos</button>
+      <button role="tab" id="tab-teoria" aria-controls="vista-teoria" aria-selected="false">Teoría</button>
+      <button role="tab" id="tab-historial" aria-controls="vista-historial" aria-selected="false">Historial</button>
+    </nav>
+
+    <!-- ---------- Resultado ---------- -->
+    <section class="vista" id="vista-resultado" role="tabpanel" aria-labelledby="tab-resultado">
+      <div class="hoja hoja-grafico">
+        <div class="grafico" id="grafico-principal">
+          <canvas></canvas>
+          <div class="grafico-vacio" id="grafico-vacio">
+            <p>Escribí una función para ver su gráfica.</p>
+            <p class="tenue">La secante necesita dos valores iniciales, x₀ y x₁, cerca de la raíz.</p>
+          </div>
+          <div class="grafico-controles">
+            <button type="button" data-zoom="acercar" title="Acercar" aria-label="Acercar">+</button>
+            <button type="button" data-zoom="alejar" title="Alejar" aria-label="Alejar">−</button>
+            <button type="button" data-zoom="ajustar" title="Ajustar vista" aria-label="Ajustar vista">⤢</button>
+          </div>
+          <div class="grafico-coordenadas" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div id="resultado-contenido" hidden>
+        <div class="respuesta">
+          <div class="respuesta-estado" id="respuesta-estado"></div>
+          <div class="respuesta-recuadro">
+            <span class="respuesta-etiqueta">Raíz aproximada</span>
+            <span class="respuesta-valor" id="respuesta-raiz"></span>
+            <span class="respuesta-fx" id="respuesta-fx"></span>
+          </div>
+          <dl class="respuesta-datos">
+            <div><dt>Iteraciones</dt><dd id="dato-iteraciones"></dd></div>
+            <div><dt>Error absoluto</dt><dd id="dato-error-abs"></dd></div>
+            <div><dt>Error relativo</dt><dd id="dato-error-rel"></dd></div>
+            <div><dt>Cifras correctas</dt><dd id="dato-cifras"></dd></div>
+          </dl>
+          <p class="respuesta-mensaje" id="respuesta-mensaje"></p>
+        </div>
+
+        <div class="nota nota-bolzano" id="nota-bolzano"></div>
+
+        <div class="hoja">
+          <div class="hoja-cabecera">
+            <h2>Tabla de iteraciones</h2>
+            <div class="exportar">
+              <span class="tenue">Exportar</span>
+              <button type="button" class="boton-chico" data-exportar="html" title="Informe completo listo para imprimir o guardar como PDF">Informe</button>
+              <button type="button" class="boton-chico" data-exportar="csv" title="Tabla para Excel">Excel (CSV)</button>
+              <button type="button" class="boton-chico" data-exportar="txt" title="Texto plano">Texto</button>
+            </div>
+          </div>
+          <div class="tabla-contenedor">
+            <table class="tabla" id="tabla-iteraciones">
+              <thead><tr>
+                <th>n</th><th>x<sub>n−1</sub></th><th>x<sub>n</sub></th><th>f(x<sub>n−1</sub>)</th><th>f(x<sub>n</sub>)</th>
+                <th>x<sub>n+1</sub></th><th>f(x<sub>n+1</sub>)</th><th>E<sub>a</sub></th><th>ε<sub>a</sub> %</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="tenue pie-tabla">Tocá una fila para ver ese paso animado.</p>
+        </div>
+
+        <div class="hoja">
+          <h2>Análisis del resultado</h2>
+          <ul class="conclusiones" id="conclusiones"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Paso a paso ---------- -->
+    <section class="vista" id="vista-pasos" role="tabpanel" aria-labelledby="tab-pasos" hidden>
+      <div class="sin-datos" data-sin-datos>
+        <p>Resolvé un problema para ver cómo trabaja el método, paso por paso.</p>
+      </div>
+      <div class="pasos" data-con-datos hidden>
+        <div class="hoja hoja-grafico pasos-grafico">
+          <div class="grafico grafico-grande" id="grafico-pasos">
+            <canvas></canvas>
+            <div class="grafico-controles">
+              <button type="button" data-zoom="acercar" title="Acercar" aria-label="Acercar">+</button>
+              <button type="button" data-zoom="alejar" title="Alejar" aria-label="Alejar">−</button>
+              <button type="button" data-zoom="ajustar" title="Volver a seguir la animación" aria-label="Seguir animación">⤢</button>
+            </div>
+            <div class="grafico-coordenadas" aria-hidden="true"></div>
+          </div>
+          <div class="reproductor">
+            <button type="button" class="boton-icono" id="paso-inicio" title="Ir al principio" aria-label="Ir al principio">
+              <svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+            <button type="button" class="boton-icono" id="paso-anterior" title="Paso anterior (←)" aria-label="Paso anterior">
+              <svg viewBox="0 0 24 24"><path d="M18 5v14L7 12z"/></svg></button>
+            <button type="button" class="boton-reproducir" id="paso-reproducir" title="Reproducir / pausar (espacio)" aria-label="Reproducir">
+              <svg viewBox="0 0 24 24" class="icono-play"><path d="M7 4v16l13-8z"/></svg>
+              <svg viewBox="0 0 24 24" class="icono-pausa"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+            </button>
+            <button type="button" class="boton-icono" id="paso-siguiente" title="Paso siguiente (→)" aria-label="Paso siguiente">
+              <svg viewBox="0 0 24 24"><path d="M6 5v14l11-7z"/></svg></button>
+            <button type="button" class="boton-icono" id="paso-fin" title="Ir al final" aria-label="Ir al final">
+              <svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+            <div class="linea-tiempo" id="linea-tiempo" role="group" aria-label="Iteraciones"></div>
+            <label class="velocidad">Velocidad
+              <select id="velocidad">
+                <option value="0.5">0.5×</option>
+                <option value="1" selected>1×</option>
+                <option value="2">2×</option>
+                <option value="4">4×</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="hoja explicacion" id="explicacion" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ---------- Convergencia ---------- -->
+    <section class="vista" id="vista-convergencia" role="tabpanel" aria-labelledby="tab-convergencia" hidden>
+      <div class="sin-datos" data-sin-datos><p>Resolvé un problema para analizar su convergencia.</p></div>
+      <div data-con-datos hidden>
+        <div class="dos-columnas">
+          <div class="hoja">
+            <h2>Error aproximado por iteración</h2>
+            <p class="tenue">Escala logarítmica: cada línea de la grilla es 10 veces más chica que la anterior.</p>
+            <div class="grafico-lineas"><canvas id="canvas-error"></canvas></div>
+          </div>
+          <div class="hoja">
+            <h2>Orden de convergencia estimado</h2>
+            <p class="tenue">p ≈ ln(e<sub>n+1</sub>/e<sub>n</sub>) / ln(e<sub>n</sub>/e<sub>n−1</sub>). Para la secante, la teoría dice φ ≈ 1.618. Las primeras estimaciones, lejos de la raíz, son poco confiables.</p>
+            <div class="grafico-lineas"><canvas id="canvas-orden"></canvas></div>
+          </div>
+        </div>
+        <div class="hoja">
+          <h2>¿Converge? ¿Qué tan rápido?</h2>
+          <div id="texto-convergencia" class="prosa"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Comparación ---------- -->
+    <section class="vista" id="vista-comparacion" role="tabpanel" aria-labelledby="tab-comparacion" hidden>
+      <div class="sin-datos" data-sin-datos><p>Resolvé un problema para compararlo con otros métodos.</p></div>
+      <div data-con-datos hidden>
+        <div class="hoja">
+          <h2>Mismo problema, cuatro métodos</h2>
+          <p class="tenue">Misma tolerancia y mismo criterio de parada. Los métodos cerrados usan [x₀, x₁] como intervalo; Newton-Raphson parte de x₁.</p>
+          <div class="tabla-contenedor">
+            <table class="tabla tabla-comparacion" id="tabla-comparacion">
+              <thead><tr><th>Método</th><th>Fórmula</th><th>Iteraciones</th><th>Raíz</th><th>Estado</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="derivada-newton" id="derivada-newton"></p>
+        </div>
+        <div class="dos-columnas">
+          <div class="hoja">
+            <h2>Error por iteración</h2>
+            <div class="grafico-lineas"><canvas id="canvas-comparacion"></canvas></div>
+          </div>
+          <div class="hoja">
+            <h2>Conclusiones</h2>
+            <ul class="conclusiones" id="conclusiones-comparacion"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Teoría ---------- -->
+    <section class="vista" id="vista-teoria" role="tabpanel" aria-labelledby="tab-teoria" hidden>
+      <article class="hoja teoria prosa">
+        <h2>El método de la secante</h2>
+        <p>Busca un valor <i>r</i> tal que <i>f</i>(<i>r</i>) = 0. En lugar de usar la recta tangente, como Newton-Raphson, usa la recta <b>secante</b>, que pasa por los dos últimos puntos calculados de la curva. Donde esa recta corta al eje <i>x</i> está la siguiente aproximación.</p>
+
+        <h3>De dónde sale la fórmula</h3>
+        <p>La recta que pasa por (<i>x</i><sub>n−1</sub>, <i>f</i>(<i>x</i><sub>n−1</sub>)) y (<i>x</i><sub>n</sub>, <i>f</i>(<i>x</i><sub>n</sub>)) es</p>
+        <p class="formula-bloque"><i>y</i> = <i>f</i>(<i>x</i><sub>n</sub>) + <span class="m-frac"><span class="m-num-frac"><i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>)</span><span class="m-den"><i>x</i><sub>n</sub> − <i>x</i><sub>n−1</sub></span></span> · (<i>x</i> − <i>x</i><sub>n</sub>)</p>
+        <p>Haciendo <i>y</i> = 0 y despejando <i>x</i> se obtiene</p>
+        <p class="formula-bloque formula-destacada"><i>x</i><sub>n+1</sub> = <i>x</i><sub>n</sub> − <span class="m-frac"><span class="m-num-frac"><i>f</i>(<i>x</i><sub>n</sub>) · (<i>x</i><sub>n</sub> − <i>x</i><sub>n−1</sub>)</span><span class="m-den"><i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>)</span></span></p>
+        <p>Es la fórmula de Newton-Raphson, <i>x</i><sub>n+1</sub> = <i>x</i><sub>n</sub> − <i>f</i>(<i>x</i><sub>n</sub>)/<i>f</i>′(<i>x</i><sub>n</sub>), con la derivada reemplazada por la pendiente de la secante. Por eso <b>no hace falta conocer la derivada</b>.</p>
+
+        <h3>Algoritmo</h3>
+<pre class="pseudocodigo">Entrada: f, x₀, x₁, tolerancia, máximo de iteraciones
+para n = 1, 2, …, máximo:
+    si f(x₁) = f(x₀):  detener (la secante es horizontal)
+    x₂ ← x₁ − f(x₁)·(x₁ − x₀) / (f(x₁) − f(x₀))
+    Eₐ ← |x₂ − x₁|          εₐ ← |Eₐ / x₂| · 100 %
+    si el error elegido < tolerancia:  devolver x₂
+    x₀ ← x₁ ,  x₁ ← x₂      (se descarta el punto más viejo)
+informar que no se alcanzó la tolerancia</pre>
+
+        <h3>Condiciones de aplicación</h3>
+        <ul>
+          <li><i>f</i> debe ser continua (idealmente derivable) cerca de la raíz.</li>
+          <li>Se necesitan dos valores iniciales distintos. <b>No</b> hace falta que encierren la raíz: <i>f</i>(<i>x</i>₀) y <i>f</i>(<i>x</i>₁) pueden tener el mismo signo.</li>
+          <li>Conviene que los valores iniciales estén cerca de la raíz. Si <i>f</i>(<i>x</i>₀)·<i>f</i>(<i>x</i>₁) &lt; 0, el teorema de Bolzano garantiza una raíz entre ambos.</li>
+        </ul>
+
+        <h3>Criterio de convergencia</h3>
+        <p>Si <i>f</i>′(<i>r</i>) ≠ 0, <i>f</i>″ es continua y los valores iniciales están suficientemente cerca de <i>r</i>, el método converge con orden</p>
+        <p class="formula-bloque">p = φ = <span class="m-frac"><span class="m-num-frac">1 + √5</span><span class="m-den">2</span></span> ≈ 1.618 &nbsp;&nbsp; es decir &nbsp;&nbsp; |e<sub>n+1</sub>| ≈ C · |e<sub>n</sub>|<sup>1.618</sup></p>
+        <p>Es <b>superlineal</b>: más rápida que bisección (lineal, p = 1) y algo más lenta que Newton (cuadrática, p = 2). En la práctica, la cantidad de cifras correctas se multiplica por ≈ 1.6 en cada iteración.</p>
+
+        <h3>Criterio de parada y error</h3>
+        <ul>
+          <li><b>Error absoluto:</b> E<sub>a</sub> = |<i>x</i><sub>n+1</sub> − <i>x</i><sub>n</sub>| &lt; tolerancia.</li>
+          <li><b>Error relativo porcentual:</b> ε<sub>a</sub> = |(<i>x</i><sub>n+1</sub> − <i>x</i><sub>n</sub>) / <i>x</i><sub>n+1</sub>| · 100 % &lt; tolerancia.</li>
+          <li><b>Residuo:</b> |<i>f</i>(<i>x</i><sub>n+1</sub>)| &lt; tolerancia.</li>
+          <li>Siempre se fija un <b>máximo de iteraciones</b> para no iterar sin fin si el método no converge.</li>
+          <li>Criterio de Scarborough: si ε<sub>a</sub> &lt; 0.5·10<sup>2−n</sup> %, el resultado tiene al menos <i>n</i> cifras significativas correctas.</li>
+        </ul>
+
+        <h3>Ventajas</h3>
+        <ul>
+          <li>No necesita la derivada, lo que sirve cuando <i>f</i>′ es difícil o imposible de calcular.</li>
+          <li>Converge rápido (orden ≈ 1.618), mucho más que bisección y falsa posición.</li>
+          <li>Hace una sola evaluación nueva de <i>f</i> por iteración (Newton necesita <i>f</i> y <i>f</i>′).</li>
+          <li>No exige un intervalo con cambio de signo.</li>
+        </ul>
+
+        <h3>Limitaciones</h3>
+        <ul>
+          <li>No garantiza la convergencia: puede diverger si los valores iniciales están lejos de la raíz.</li>
+          <li>Si <i>f</i>(<i>x</i><sub>n</sub>) = <i>f</i>(<i>x</i><sub>n−1</sub>) hay división por cero (secante horizontal).</li>
+          <li>Como no encierra la raíz, puede “saltar” a otra raíz o salir del dominio de la función.</li>
+          <li>En raíces múltiples (<i>f</i>′(<i>r</i>) = 0) la convergencia se vuelve lineal.</li>
+          <li>Cerca de la raíz, <i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>) resta números muy parecidos, lo que produce error de cancelación.</li>
+        </ul>
+
+        <h3>Secante y falsa posición</h3>
+        <p>Usan la misma fórmula. La diferencia es qué punto se descarta. La secante descarta siempre el más viejo, mientras que la falsa posición conserva el extremo que mantiene el cambio de signo. Por eso la falsa posición siempre converge pero suele ser más lenta, y la secante es más rápida pero puede fallar.</p>
+      </article>
+    </section>
+
+    <!-- ---------- Historial ---------- -->
+    <section class="vista" id="vista-historial" role="tabpanel" aria-labelledby="tab-historial" hidden>
+      <div class="hoja">
+        <div class="hoja-cabecera">
+          <h2>Ejercicios resueltos</h2>
+          <button type="button" class="boton-chico" id="btn-vaciar-historial">Vaciar historial</button>
+        </div>
+        <ul class="historial" id="lista-historial"></ul>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="aviso" id="aviso" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

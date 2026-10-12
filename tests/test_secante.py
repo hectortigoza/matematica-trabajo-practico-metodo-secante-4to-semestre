@@ -70,6 +70,11 @@ class TestSecante(unittest.TestCase):
         self.assertFalse(r.exitoso)
         self.assertIn(r.estado, (sec.MAX_ITERACIONES, sec.DIVERGENCIA, sec.DIVISION_CERO))
 
+    def test_divergencia(self):
+        # f(x) = 1/x no tiene raíz: la secante se escapa hacia el infinito
+        r = resolver("1/x", -1, 2)
+        self.assertEqual(r.estado, sec.DIVERGENCIA)
+
     def test_maximo_iteraciones(self):
         r = resolver("x^3 - 4x - 1", 1, 2, 1e-14, 2)
         self.assertEqual(r.estado, sec.MAX_ITERACIONES)

@@ -63,6 +63,9 @@ ESTADOS_EXITOSOS = (CONVERGIO, RAIZ_EXACTA)
 
 # Si una aproximación supera este valor en módulo se considera que el método diverge
 LIMITE_DIVERGENCIA = 1e12
+# También diverge si se aleja más de un millón de veces la escala de los valores iniciales
+# (pasa, por ejemplo, con f(x) = 1/x: f tiende a 0 cuando x tiende a infinito)
+FACTOR_DIVERGENCIA = 1e6
 
 
 class Iteracion:
@@ -216,6 +219,8 @@ def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRIT
 
     x_anterior, x_actual = x0, x1
     f_anterior, f_actual = f0, f1
+    limite = min(LIMITE_DIVERGENCIA,
+                 FACTOR_DIVERGENCIA * (1 + max(m.valor_absoluto(x0), m.valor_absoluto(x1))))
 
     # --- Iteraciones ---------------------------------------------------------
     for n in range(1, max_iteraciones + 1):
@@ -243,7 +248,7 @@ def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRIT
         # Fórmula de la secante
         x_siguiente = x_actual - f_actual * (x_actual - x_anterior) / denominador
 
-        if not m.es_finito(x_siguiente) or m.valor_absoluto(x_siguiente) > LIMITE_DIVERGENCIA:
+        if not m.es_finito(x_siguiente) or m.valor_absoluto(x_siguiente) > limite:
             resultado.estado = DIVERGENCIA
             resultado.raiz, resultado.f_raiz = x_actual, f_actual
             resultado.mensaje = (

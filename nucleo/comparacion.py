@@ -239,4 +239,10 @@ def comparar_metodos(problema):
     else:
         conclusiones.append("Ningún método convergió con estos datos.")
 
+    if any(not r["aplicable"] for r in metodos[2:]):
+        conclusiones.append(
+            "Bisección y falsa posición no se pudieron aplicar porque f(x₀) y f(x₁) tienen el mismo "
+            "signo. Para compararlas, elegí x₀ y x₁ que encierren la raíz (usá «Buscar dónde cambia "
+            "de signo f(x)»). La secante, en cambio, funcionó igual: es un método abierto.")
+
     return {"metodos": metodos, "conclusiones": conclusiones}
