@@ -282,6 +282,8 @@ def potencia(base, exponente):
       * Exponente entero  -> exponenciación binaria (exacta y admite base negativa)
       * Exponente real    -> e^(exponente · ln(base)),  requiere base > 0
     """
+    if not es_finito(base) or not es_finito(exponente):
+        raise ErrorDesbordamiento("La potencia involucra valores demasiado grandes o indefinidos")
     if exponente == 0:
         return 1.0
     if base == 0:
