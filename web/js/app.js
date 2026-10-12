@@ -163,7 +163,11 @@ async function analizarFuncion() {
     contenedor.classList.remove("con-error");
     $(".error-campo", contenedor).textContent = "";
     estado.vistaPrevia = null;
-    if (!estado.datos) { lienzoPrincipal.fijarFuncion(null); $("#grafico-vacio").hidden = false; }
+    if (!estado.datos) {
+      lienzoPrincipal.fijarFuncion(null);
+      $("#grafico-vacio-texto").textContent = "Escribí una función para ver su gráfica.";
+      $("#grafico-vacio").hidden = false;
+    }
     return;
   }
 
@@ -176,6 +180,14 @@ async function analizarFuncion() {
     $(".error-campo", contenedor).textContent = e.mensaje;
     if (e.posicion !== undefined) marcarErrorFuncion(e);
     else vista.innerHTML = "";
+    // Mientras la función tenga errores no se muestra una gráfica que no le corresponde
+    if (!estado.datos) {
+      estado.vistaPrevia = null;
+      lienzoPrincipal.fijarFuncion(null);
+      $("#grafico-vacio-texto").textContent = "Corregí la función para ver su gráfica.";
+      $("#grafico-vacio").hidden = false;
+      $("#bolzano-vivo").textContent = "";
+    }
     return;
   }
 
@@ -549,7 +561,7 @@ function renderHistorial(lista) {
       <div>
         <div class="historial-fx">f(x) = ${escapar(h.funcion)}</div>
         <div class="historial-detalle">x₀ = ${escapar(h.x0)}, x₁ = ${escapar(h.x1)}, tol = ${escapar(h.tolerancia)} ·
-          ${h.raiz === null ? "sin raíz" : `raíz ≈ ${corto(h.raiz, 10)}`} · ${h.iteraciones} it. · ${escapar(h.fecha)}
+          ${h.raiz === null || !h.exitoso ? "sin raíz" : `raíz ≈ ${corto(h.raiz, 10)}`} · ${h.iteraciones} it. · ${escapar(h.fecha)}
           <span class="estado ${clase}" style="padding:1px 8px;font-size:.72rem;margin-left:4px">${(ESTADOS[h.estado] || ["", h.estado])[1]}</span></div>
       </div>
       <button type="button" class="boton-chico" data-accion="cargar">Volver a resolver</button>

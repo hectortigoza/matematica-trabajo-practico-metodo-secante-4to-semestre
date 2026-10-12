@@ -183,8 +183,10 @@ def orden_convergencia(iteraciones):
     estimaciones = []
     for i in range(2, len(errores)):
         e0, e1, e2 = errores[i - 2], errores[i - 1], errores[i]
+        # Si el error ya es del tamaño del redondeo de la máquina, la estimación no sirve
+        ruido = 1e-13 * (1 + m.valor_absoluto(iteraciones[i].x_siguiente))
         p = None
-        if e0 > 0 and e1 > 0 and e2 > 0 and e1 != e0:
+        if e0 > 0 and e1 > ruido and e2 > ruido and e1 != e0:
             denominador = m.ln(e1 / e0)
             if denominador != 0:
                 p = m.ln(e2 / e1) / denominador
@@ -194,15 +196,15 @@ def orden_convergencia(iteraciones):
 
 def orden_representativo(estimaciones):
     """
-    Promedio de las últimas estimaciones razonables. Las primeras iteraciones
-    (lejos de la raíz) y la última (afectada por el redondeo) no son confiables.
+    Promedio de las DOS últimas estimaciones válidas. La fórmula de p supone que
+    ya estamos cerca de la raíz, así que las primeras iteraciones no sirven;
+    las afectadas por el redondeo ya se descartaron en orden_convergencia().
     """
     validas = [e["p"] for e in estimaciones if e["p"] is not None and 0 < e["p"] < 4]
-    if len(validas) > 3:
-        validas = validas[-4:-1]
     if not validas:
         return None
-    return sum(validas) / len(validas)
+    ultimas = validas[-2:]
+    return sum(ultimas) / len(ultimas)
 
 
 # ==========================================================================

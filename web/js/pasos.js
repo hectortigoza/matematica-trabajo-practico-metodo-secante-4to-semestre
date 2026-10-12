@@ -10,7 +10,7 @@
 // Todos los números vienen calculados desde Python; acá solo se dibujan.
 
 import { Lienzo } from "./lienzo.js";
-import { num, numHTML, escapar } from "./formato.js";
+import { num, numHTML, numCompacto, escapar } from "./formato.js";
 
 const DURACIONES = [1100, 1500, 1200, 1100, 1500];     // ms por subpaso a velocidad 1×
 const SUBPASOS = 5;
@@ -214,7 +214,7 @@ export class PasoAPaso {
     const iA = `${n - 1}`, iN = `${n}`, iS = `${n + 1}`;
     const xA = `<i>x</i>${sub(iA)}`, xN = `<i>x</i>${sub(iN)}`, xS = `<i>x</i>${sub(iS)}`;
     const v = (x) => `<span class="valor-a">${numHTML(x, d)}</span>`;
-    const par = (x) => (x < 0 ? `(${numHTML(x, d)})` : numHTML(x, d));
+    const par = (x) => (x < 0 ? `(${numCompacto(x, d)})` : numCompacto(x, d));
     const frac = (a, b) => `<span class="m-frac"><span class="m-num-frac">${a}</span><span class="m-den">${b}</span></span>`;
 
     const ultimo = this.i === this.iteraciones.length - 1;
@@ -262,7 +262,7 @@ export class PasoAPaso {
           <div class="subpaso-cuerpo"><div>
             <p>Donde la secante vale 0 está la nueva aproximación:</p>
             <div class="formula-paso">${xS} = ${xN} − ${frac(`f(${xN}) · (${xN} − ${xA})`, `f(${xN}) − f(${xA})`)}</div>
-            <div class="formula-paso"><span class="igual">=</span> ${numHTML(it.x_actual, d)} − ${frac(`${par(it.f_actual)} · (${par(it.x_actual)} − ${par(it.x_anterior)})`, `${par(it.f_actual)} − ${par(it.f_anterior)}`)}</div>
+            <div class="formula-paso"><span class="igual">=</span> ${numCompacto(it.x_actual, d)} − ${frac(`${par(it.f_actual)} · (${par(it.x_actual)} − ${par(it.x_anterior)})`, `${par(it.f_actual)} − ${par(it.f_anterior)}`)}</div>
             <div class="formula-paso"><span class="igual">=</span> <span class="resultado-paso">${numHTML(it.x_siguiente, d)}</span></div>
           </div></div>
         </li>

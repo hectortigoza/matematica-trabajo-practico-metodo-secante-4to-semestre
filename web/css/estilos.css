@@ -701,7 +701,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
    Paso a paso
    -------------------------------------------------------------------------- */
 
-.pasos { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.pasos { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
 .pasos[hidden] { display: none; }
 
 .reproductor {
@@ -792,7 +792,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 
 .formula-paso {
   font-family: var(--fuente-mat);
-  font-size: 1.08rem;
+  font-size: 1.04rem;
   color: var(--tinta);
   margin-top: 8px;
   line-height: 2.1;

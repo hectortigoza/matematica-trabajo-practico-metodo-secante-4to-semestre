@@ -25,6 +25,13 @@ export function numHTML(v, dec = 8) {
   return `${m[1]}·10<sup>${signo}${parseInt(m[3], 10)}</sup>`;
 }
 
+/** Como numHTML pero sin ceros finales: 2.00000000 -> 2  (para fórmulas sustituidas). */
+export function numCompacto(v, dec = 8) {
+  const s = numHTML(v, dec);
+  if (s.includes("·10")) return s;
+  return s.includes(".") ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+}
+
 /** Versión corta para etiquetas de ejes y gráficos. */
 export function corto(v, cifras = 4) {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";

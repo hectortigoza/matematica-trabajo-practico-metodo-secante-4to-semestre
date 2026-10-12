@@ -94,6 +94,12 @@ class TestAnalisis(unittest.TestCase):
         orden = analisis.orden_representativo(analisis.orden_convergencia(r.iteraciones))
         self.assertAlmostEqual(orden, analisis.PHI, delta=0.25)
 
+    def test_orden_con_otro_intervalo(self):
+        # Con [2, 3] las primeras estimaciones son malas; el promedio no debe arrastrarlas
+        r = resolver("x^3 - 4x - 1", 2, 3, 1e-8)
+        orden = analisis.orden_representativo(analisis.orden_convergencia(r.iteraciones))
+        self.assertAlmostEqual(orden, analisis.PHI, delta=0.25)
+
     def test_bolzano(self):
         f = Expresion("x^3 - 4x - 1")
         self.assertTrue(analisis.verificar_intervalo(f, 2, 3)["cumple"])

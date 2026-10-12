@@ -218,9 +218,13 @@ def comparar_metodos(problema):
     exitosos = [r for r in metodos if r["exitoso"]]
     conclusiones = []
     if exitosos:
-        mas_rapido = min(exitosos, key=lambda r: len(r["iteraciones"]))
-        conclusiones.append("El método más rápido fue %s, con %d iteraciones." % (
-            mas_rapido["metodo"], len(mas_rapido["iteraciones"])))
+        minimo = min(len(r["iteraciones"]) for r in exitosos)
+        ganadores = [r["metodo"] for r in exitosos if len(r["iteraciones"]) == minimo]
+        if len(ganadores) == 1:
+            conclusiones.append("El método más rápido fue %s, con %d iteraciones." % (ganadores[0], minimo))
+        else:
+            conclusiones.append("Empataron %s, con %d iteraciones cada uno." % (
+                " y ".join(ganadores), minimo))
         secante = metodos[0]
         biseccion_r = metodos[3]
         if secante["exitoso"] and biseccion_r["exitoso"] and len(secante["iteraciones"]) > 0:
