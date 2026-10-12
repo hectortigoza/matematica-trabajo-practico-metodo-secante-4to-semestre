@@ -33,10 +33,22 @@ def _fila(n, x, fx, x_previo):
     return {"n": n, "x": x, "fx": fx, "error_absoluto": absoluto, "error_relativo": relativo}
 
 
+DISCONTINUIDAD = "discontinuidad"
+TOLERANCIA_RESIDUO = 1e-3      # si "converge" pero |f(x)| es mayor, no es una raíz
+
+
 def _cerrar(resultado, estado, mensaje):
     resultado["estado"] = estado
     resultado["exitoso"] = estado in sec.ESTADOS_EXITOSOS
     resultado["mensaje"] = mensaje
+    # Un método puede "converger" a una asíntota (ej. bisección con 1/x en [−1, 2]):
+    # las aproximaciones se estabilizan, pero f(x) no se acerca a cero.
+    if resultado["exitoso"] and m.valor_absoluto(resultado["f_raiz"]) > TOLERANCIA_RESIDUO:
+        resultado["estado"] = DISCONTINUIDAD
+        resultado["exitoso"] = False
+        resultado["mensaje"] = (
+            "Las aproximaciones se estabilizaron en x ≈ %.6g, pero ahí f(x) = %.4g no se anula: "
+            "es una discontinuidad (asíntota), no una raíz." % (resultado["raiz"], resultado["f_raiz"]))
     return resultado
 
 
@@ -199,6 +211,8 @@ def secante_como_fila(resultado):
         r["iteraciones"].append({"n": it.n, "x": it.x_siguiente, "fx": it.f_siguiente,
                                  "error_absoluto": it.error_absoluto, "error_relativo": it.error_relativo})
     r["raiz"], r["f_raiz"] = resultado.raiz, resultado.f_raiz
+    if resultado.f_raiz is None:
+        r["f_raiz"] = 0.0 if resultado.exitoso else None
     return _cerrar(r, resultado.estado, resultado.mensaje)
 
 

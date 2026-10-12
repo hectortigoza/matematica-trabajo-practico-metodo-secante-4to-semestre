@@ -168,6 +168,15 @@ class TestComparacion(unittest.TestCase):
         iteraciones = {r["metodo"]: len(r["iteraciones"]) for r in resumen["metodos"]}
         self.assertLess(iteraciones["Secante"], iteraciones["Bisección"])
 
+    def test_biseccion_hacia_una_asintota_no_es_exito(self):
+        # 1/x cambia de signo en [−1, 2] por la asíntota en x = 0, no por una raíz
+        p = validar_problema({"funcion": "1/x", "x0": "-1", "x1": "2", "tolerancia": "1e-4",
+                              "max_iteraciones": "50", "criterio": "absoluto"})
+        resumen = comparar_metodos(p)
+        biseccion = [r for r in resumen["metodos"] if r["metodo"] == "Bisección"][0]
+        self.assertEqual(biseccion["estado"], "discontinuidad")
+        self.assertIn("Ningún método", resumen["conclusiones"][0])
+
     def test_cerrados_no_aplicables_sin_cambio_de_signo(self):
         p = validar_problema({"funcion": "x^3 - 4x - 1", "x0": "1", "x1": "2", "tolerancia": "1e-8",
                               "max_iteraciones": "100", "criterio": "absoluto"})

@@ -30,6 +30,7 @@ const ESTADOS = {
   fuera_dominio: ["mal", "Detenido: fuera del dominio"],
   divergencia: ["mal", "Detenido: el método diverge"],
   no_aplicable: ["alerta", "No aplicable"],
+  discontinuidad: ["mal", "Converge a una discontinuidad"],
 };
 
 const AYUDA_CRITERIO = {

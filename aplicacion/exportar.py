@@ -18,6 +18,7 @@ ESTADOS = {
     "fuera_dominio": "Detenido: fuera del dominio",
     "divergencia": "Detenido: el método diverge",
     "no_aplicable": "No aplicable",
+    "discontinuidad": "Converge a una discontinuidad",
 }
 
 
