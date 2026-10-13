@@ -2,7 +2,6 @@
 
 import { llamar } from "./api.js";
 import { numHTML, corto, escapar, reducirMovimiento } from "./formato.js";
-import { Lienzo } from "./lienzo.js";
 import { PasoAPaso } from "./pasos.js";
 import { graficoLineas, redibujarTodos } from "./lineas.js";
 
@@ -35,9 +34,12 @@ const estado = {
 const form = $("#formulario");
 const campo = (nombre) => $(`#${nombre}`);
 
-const lienzoPasos = new Lienzo($("#grafico-pasos"));
-const pasos = new PasoAPaso(lienzoPasos, {
+const pasos = new PasoAPaso({
   explicacion: $("#explicacion"),
+  tabla: $("#pasos-tabla"),
+  tablaError: $("#pasos-error"),
+  tituloError: $("#pasos-error-titulo"),
+  posicion: $("#paso-posicion"),
   lineaTiempo: $("#linea-tiempo"),
   reproducir: $("#paso-reproducir"),
   anterior: $("#paso-anterior"),
@@ -500,9 +502,7 @@ campo("decimales").addEventListener("change", (e) => {
   if (estado.datos) {
     renderTablas(estado.datos);
     renderComparacion(estado.datos);
-    pasos.decimales = estado.decimales;
-    pasos._renderExplicacion();
-    pasos._actualizarSubpasos();
+    pasos.actualizarDecimales(estado.decimales);
   }
 });
 
@@ -555,14 +555,10 @@ $("#btn-tema").addEventListener("click", () => {
     : window.matchMedia("(prefers-color-scheme: dark)").matches;
   raiz.dataset.theme = oscuroAhora ? "light" : "dark";
   try { localStorage.setItem("tema", raiz.dataset.theme); } catch (err) { /* sin almacenamiento */ }
-  lienzoPasos.dibujar();
   redibujarTodos();
 });
 
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  lienzoPasos.dibujar();
-  redibujarTodos();
-});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => redibujarTodos());
 
 $("#btn-salir").addEventListener("click", async () => {
   if (!confirm("¿Cerrar el programa? Se detendrá el servidor.")) return;

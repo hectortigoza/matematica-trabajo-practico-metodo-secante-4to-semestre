@@ -107,7 +107,7 @@ def validar_problema(datos):
     funcion = intentar(validar_funcion, datos.get("funcion"))
     x0 = intentar(leer_numero, datos.get("x0"), "x0", "el valor inicial x₀")
     x1 = intentar(leer_numero, datos.get("x1"), "x1", "el valor inicial x₁")
-    tolerancia = intentar(leer_numero, datos.get("tolerancia"), "tolerancia", "la tolerancia")
+    tolerancia = intentar(leer_numero, datos.get("tolerancia"), "tolerancia", "el error pedido")
     # El máximo de iteraciones es opcional: si no se envía, se itera hasta alcanzar el error
     max_iteraciones = None
     if str(datos.get("max_iteraciones") or "").strip():
@@ -125,14 +125,14 @@ def validar_problema(datos):
                                    "diferentes para trazar la recta."})
     if tolerancia is not None:
         if tolerancia <= 0:
-            errores.append({"campo": "tolerancia", "mensaje": "La tolerancia debe ser un número positivo (ej.: 0.0001)."})
+            errores.append({"campo": "tolerancia", "mensaje": "El error pedido debe ser un número positivo (ej.: 0.0001)."})
         elif tolerancia < 1e-15 and criterio != CRITERIO_RELATIVO:
             errores.append({"campo": "tolerancia",
-                            "mensaje": "La tolerancia es demasiado chica: la computadora trabaja con unas "
+                            "mensaje": "El error pedido es demasiado chico: la computadora trabaja con unas "
                                        "16 cifras significativas. Usá un valor ≥ 1e-15."})
         elif criterio == CRITERIO_RELATIVO and tolerancia >= 100:
             errores.append({"campo": "tolerancia",
-                            "mensaje": "Con el criterio relativo la tolerancia es un porcentaje: debe ser menor a 100 %."})
+                            "mensaje": "Con el criterio relativo el error pedido es un porcentaje: debe ser menor a 100 %."})
     if max_iteraciones is not None and not (1 <= max_iteraciones <= MAXIMO_ITERACIONES_PERMITIDO):
         errores.append({"campo": "max_iteraciones",
                         "mensaje": "El máximo de iteraciones debe estar entre 1 y %d." % MAXIMO_ITERACIONES_PERMITIDO})
@@ -143,7 +143,7 @@ def validar_problema(datos):
     problema = Problema(funcion, x0, x1, tolerancia, max_iteraciones, criterio)
     if criterio != CRITERIO_RELATIVO and tolerancia >= 1:
         problema.advertencias.append(
-            "La tolerancia (%g) es grande: el resultado tendrá poca precisión." % tolerancia)
+            "El error pedido (%g) es grande: el resultado tendrá poca precisión." % tolerancia)
     return problema
 
 

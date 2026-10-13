@@ -697,7 +697,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
    Paso a paso
    -------------------------------------------------------------------------- */
 
-.pasos { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+.pasos { display: flex; flex-direction: column; gap: 16px; }
 .pasos[hidden] { display: none; }
 
 .reproductor {
@@ -743,7 +743,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 .velocidad { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--grafito-suave); }
 .velocidad select { padding: 4px 6px; border-radius: 5px; border: 1px solid var(--borde); background: var(--hoja); }
 
-.explicacion { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 12px; }
+.explicacion { display: flex; flex-direction: column; gap: 10px; min-height: 230px; }
 .explicacion-cabecera { display: flex; justify-content: space-between; align-items: baseline; }
 .explicacion-cabecera h2 { font-size: 1.35rem; }
 .explicacion-cabecera span { font-size: 0.82rem; color: var(--grafito-tenue); }
@@ -970,9 +970,10 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
   cursor: pointer;
   border-color: var(--tinta-suave);
 }
-#tabla-error th, #tabla-error td { text-align: left; }
-#tabla-error th:first-child, #tabla-error td:first-child { text-align: center; }
-#tabla-error td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
+#tabla-error th, #tabla-error td, #pasos-error th, #pasos-error td { text-align: left; }
+#tabla-error th:first-child, #tabla-error td:first-child,
+#pasos-error th:first-child, #pasos-error td:first-child { text-align: center; }
+#tabla-error td:nth-child(2), #pasos-error td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
 #tabla-error tbody tr { cursor: default; }
 .comparacion { color: var(--grafito-suave); }
 .comparacion.cumple { color: var(--verde); }
@@ -997,6 +998,53 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 @media (max-width: 520px) {
   .datos-valores { grid-template-columns: 1fr 1fr; }
   .datos-valores .campo[data-campo="tolerancia"] { grid-column: 1 / -1; }
+}
+
+/* --------------------------------------------------------------------------
+   Paso a paso de la tabla: fórmula → reemplazo → resultado → se carga
+   -------------------------------------------------------------------------- */
+
+.pasos .reproductor { border-top: 0; padding: 10px 14px; }
+.paso-posicion { font-size: 0.88rem; color: var(--grafito-suave); font-variant-numeric: tabular-nums; margin: 0 6px; white-space: nowrap; }
+
+.paso-bloques { display: flex; flex-direction: column; gap: 6px; }
+.paso-bloque {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radio-chico);
+  background: var(--hoja-alterna);
+}
+.paso-bloque.resultado { background: var(--lapiz-suave); }
+.paso-bloque.resultado.cumple { background: var(--verde-suave); }
+.paso-bloque.cumple .resultado-paso { color: var(--verde); }
+.paso-etiqueta { font-size: 0.8rem; font-weight: 600; color: var(--grafito-suave); }
+.paso-bloque .formula-paso { margin-top: 0; font-size: 1.18rem; line-height: 2.2; }
+.paso-nota { margin: 2px 0 0; font-size: 0.88rem; color: var(--grafito-suave); }
+
+/* Primero la fórmula, después el reemplazo, después el resultado */
+@keyframes paso-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.explicacion.animar .paso-bloque { animation: paso-entra 0.45s ease both; }
+.explicacion.animar .paso-bloque:nth-child(2) { animation-delay: 0.7s; }
+.explicacion.animar .paso-bloque:nth-child(3) { animation-delay: 1.4s; }
+.explicacion.animar .paso-nota { animation: paso-entra 0.45s ease 1.9s both; }
+
+/* La celda recién calculada se carga en la tabla después de mostrar el resultado */
+@keyframes celda-carga {
+  0% { opacity: 0; background: transparent; }
+  30% { opacity: 1; background: var(--lapiz-suave); box-shadow: inset 0 0 0 2px var(--lapiz); }
+  100% { opacity: 1; background: var(--lapiz-suave); box-shadow: inset 0 0 0 2px var(--lapiz); }
+}
+.tabla-pasos td.recien { animation: celda-carga 0.8s ease 1.9s both; font-weight: 600; }
+.tabla-pasos tbody tr { cursor: default; }
+.tabla-pasos tbody tr:hover { background: none; }
+.tabla-pasos tr.en-curso td { background: color-mix(in srgb, var(--hoja-alterna) 70%, transparent); }
+.tabla-pasos tr.final td { background: var(--verde-suave); }
+
+@media (max-width: 640px) {
+  .paso-bloque { grid-template-columns: 1fr; gap: 0; }
 }
 
 /* --------------------------------------------------------------------------

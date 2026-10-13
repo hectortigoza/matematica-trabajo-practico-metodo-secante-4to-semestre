@@ -61,7 +61,7 @@ app.py             ← Arranca todo
 Queremos encontrar r tal que **f(r) = 0**. Tenemos dos puntos de la curva: (x₀, f(x₀)) y (x₁, f(x₁)).
 Trazamos la **recta que pasa por esos dos puntos** (la secante) y miramos **dónde corta al eje x**. Ese punto es x₂, una mejor aproximación de la raíz. Después repetimos con x₁ y x₂, y así sucesivamente.
 
-![Paso a paso: la secante (roja punteada) corta al eje x en x₂](capturas/03-paso-a-paso.png)
+![Paso a paso: la fórmula de la secante, el reemplazo y el resultado x₃, que se carga en la tabla](capturas/03-paso-a-paso.png)
 
 ### La fórmula (y de dónde sale)
 
@@ -96,7 +96,7 @@ f(x) = x³ − 4x − 1, x₀ = 1, x₁ = 2, tolerancia = 0.0001
 
 > ⚠️ Fijate que en [1, 2] **no hay cambio de signo** (f(1) = −4 y f(2) = −1, ambos negativos), y aun así la secante encuentra la raíz, que está en 2.1149, **afuera** del intervalo. Bisección no podría. Es una pregunta típica.
 
-![En la iteración 2, la cota roja muestra el error Eₐ = |x₃ − x₂|](capturas/04-paso-a-paso-error.png)
+![Última iteración: el error es menor al pedido y el método se detiene](capturas/04-paso-a-paso-error.png)
 
 ---
 
@@ -342,7 +342,7 @@ DIVERGENCIA      # las aproximaciones se van al infinito
 
 ### La clase `Iteracion` (una fila de la tabla)
 
-Guarda xₙ₋₁, xₙ, f(xₙ₋₁), f(xₙ), xₙ₊₁, f(xₙ₊₁), los errores y la **pendiente** de la secante. La pendiente no hace falta para el método, pero se muestra en el paso a paso.
+Guarda xₙ₋₁, xₙ, f(xₙ₋₁), f(xₙ), xₙ₊₁, f(xₙ₊₁), los errores y la **pendiente** de la secante. La pendiente no hace falta para el método, pero queda disponible para el análisis.
 
 ### La función `metodo_secante(f, x0, x1, tolerancia, max_iteraciones, criterio)`
 

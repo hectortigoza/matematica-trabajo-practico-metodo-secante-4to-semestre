@@ -61,7 +61,7 @@ Parte de **dos aproximaciones iniciales** x₀ y x₁. Por los puntos (x₀, f(x
 
 Geométricamente, reemplaza la curva por una recta en las cercanías de la raíz. Cuanto más cerca estamos de la raíz, más se parece la curva a esa recta y mejor es la aproximación.
 
-![Una iteración del método: la secante corta al eje x en x₂](capturas/03-paso-a-paso.png)
+![Paso a paso: la fórmula de la secante con su reemplazo y su resultado, que se carga en la tabla](capturas/03-paso-a-paso.png)
 
 ### 2.2 Fórmula
 
@@ -283,7 +283,7 @@ MATEMATICA/
 │   └── exportar.py           Exportación a CSV, TXT e informe HTML con gráfico SVG
 ├── web/                      ── INTERFAZ ──
 │   ├── index.html, css/estilos.css
-│   ├── js/                   app.js, lienzo.js (gráfico), pasos.js (animación), lineas.js, …
+│   ├── js/                   app.js (pantalla), pasos.js (paso a paso), lineas.js (gráficos), …
 │   └── fuentes/              Tipografías incluidas (funciona sin internet)
 ├── tests/                    42 pruebas automáticas
 └── docs/                     Esta documentación, la guía del código y las capturas
@@ -322,7 +322,7 @@ La interfaz usa la estética de una **hoja de papel milimetrado de dibujo técni
 | Zona | Contenido |
 |---|---|
 | **Resolver** (página de inicio) | Arriba, los datos: la ecuación f(x) con vista previa y teclado matemático, los valores iniciales x₀ y x₁ y el error pedido. Abajo, dos cuadros lado a lado: a la izquierda **la tabla** (n, xₙ₋₁, xₙ, f(xₙ₋₁), f(xₙ), xₙ₊₁) que arranca con los valores iniciales; a la derecha **la comparativa del error**, fila por fila, con el **criterio de parada elegible desde la cabecera del cuadro**. Debajo, la raíz obtenida y la exportación. |
-| **Paso a paso** | Animación de cada iteración en 5 subpasos con la fórmula sustituida con los números reales. |
+| **Paso a paso** | La resolución de la tabla, celda por celda. Arranca con los dos valores iniciales y en cada iteración muestra, para f(xₙ₋₁), f(xₙ), xₙ₊₁ y el error: la **fórmula**, el **reemplazo** con los números y el **resultado**, que se carga en su celda. Al final compara el error con el pedido y decide si sigue o se detiene. |
 | **Convergencia** | Error por iteración (escala logarítmica) y orden de convergencia estimado comparado con φ. |
 | **Comparar métodos** | Secante, Newton-Raphson, falsa posición y bisección sobre el mismo problema. |
 | **Teoría** | Fundamento, fórmula, algoritmo, condiciones, ventajas y limitaciones. |
@@ -432,7 +432,7 @@ Correspondencia con el punto 9 de la guía del trabajo práctico. El sistema **n
 | División por cero | f(xₙ) = f(xₙ₋₁) | "La recta secante es horizontal y no corta al eje x. Probá con otros valores iniciales." |
 | División por cero en f | 1/x en x = 0 | "f(x) no se puede evaluar en … División por cero" |
 | Fuera del dominio | ln(x) con x₀ = −1 | "√x solo está definida para x ≥ 0…", "ln(x) solo está definido para x > 0…" |
-| Tolerancia inválida | 0, −1 o 10⁻²⁰ | "La tolerancia debe ser un número positivo…" / "…demasiado chica…" |
+| Error pedido inválido | 0, −1 o 10⁻²⁰ | "El error pedido debe ser un número positivo…" / "…demasiado chico…" |
 | Condiciones que impiden la convergencia | 1/x, x² + 1 | "El método diverge…" / "Después de 100 iteraciones el error todavía no es menor al pedido: el método no converge…" |
 | Función constante | f(x) = 5 | "La función es constante (no depende de x)…" |
 | Coma decimal | 0,001 | Se acepta y se convierte a 0.001 |
@@ -517,13 +517,13 @@ Correspondencia con el punto 16 de la guía del trabajo práctico:
 
 | Funcionalidad sugerida | Implementación |
 |---|---|
-| Representación gráfica de funciones | Gráfico interactivo en el paso a paso, con zoom, desplazamiento, coordenadas y asíntotas. Vista previa matemática de la ecuación mientras se escribe. |
+| Representación gráfica de funciones | Gráfico de la función con las rectas secantes en el informe exportado (SVG dibujado en Python). Vista previa matemática de la ecuación mientras se escribe. |
 | Gráficas de convergencia | Error por iteración (escala logarítmica) y orden de convergencia estimado. |
 | Comparación automática entre métodos | Secante contra Newton-Raphson, falsa posición y bisección, con tabla, gráfico y conclusiones. |
-| Cálculo y visualización del error | Error absoluto, relativo y cifras significativas (Scarborough). En la animación, el error se dibuja como una cota de plano técnico. |
+| Cálculo y visualización del error | Error absoluto, relativo y cifras significativas (Scarborough). En el paso a paso, cada error se muestra con su fórmula, su reemplazo y su comparación con el error pedido. |
 | Exportación de resultados | CSV (se abre en Excel), TXT e informe HTML imprimible como PDF, con gráfico. |
 | Historial de ejercicios resueltos | Se guarda automáticamente y permite volver a resolver o borrar. |
-| Interfaz gráfica avanzada | Animación paso a paso, modo claro y oscuro, adaptable a celular, teclado matemático. |
+| Interfaz gráfica avanzada | Paso a paso de la tabla con reproducción automática, modo claro y oscuro, adaptable a celular, teclado matemático. |
 | Generación de informes | Informe completo: problema, resultado, Bolzano, gráfico, tabla, análisis y comparación. |
 | Incorporación de métodos adicionales | Bisección, falsa posición y Newton-Raphson (con derivada simbólica propia). |
 | Análisis automático de la convergencia | Orden estimado contra φ, monotonía del error, raíces múltiples, asíntotas, saltos a otras raíces y conclusiones en texto. |

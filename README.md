@@ -2,7 +2,7 @@
 
 Trabajo Práctico Grupal de **Matemática IV (Cálculo Numérico)**, Análisis de Sistemas.
 
-Sistema para encontrar raíces de ecuaciones no lineales **f(x) = 0** con el **método de la secante**. Muestra cada iteración animada paso a paso, analiza la convergencia y compara con otros métodos.
+Sistema para encontrar raíces de ecuaciones no lineales **f(x) = 0** con el **método de la secante**. Muestra la resolución de la tabla paso a paso, analiza la convergencia y compara con otros métodos.
 Toda la matemática está implementada **desde cero en Python**, sin `math`, `numpy`, `sympy` ni `eval()`.
 
 ![Pantalla principal](docs/capturas/02-resultado.png)
@@ -23,7 +23,7 @@ Se abre el navegador con la interfaz. Para cerrar el programa, usá el botón **
 **Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
 
 - **Método de la secante** que itera hasta alcanzar el error pedido, con tres criterios de parada elegibles desde la cabecera del cuadro del error (|xₙ₊₁ − xₙ|, relativo % y |f(xₙ₊₁)|), y detección de división por cero, divergencia y salida del dominio.
-- **Paso a paso animado**: cada iteración en 5 subpasos, con la fórmula sustituida con los valores reales.
+- **Paso a paso de la tabla**: arranca con los valores iniciales y, celda por celda, muestra la fórmula, el reemplazo y el resultado de f(xₙ₋₁), f(xₙ), xₙ₊₁ y del error, y la comparación con el error pedido.
 - **Análisis de convergencia**: error en escala logarítmica, orden estimado (≈ φ = 1.618), cifras significativas (Scarborough) y conclusiones automáticas.
 - **Comparación automática** con Newton-Raphson (derivada simbólica propia), falsa posición y bisección.
 - **Teorema de Bolzano** y detección de asíntotas en el análisis y en el informe.
