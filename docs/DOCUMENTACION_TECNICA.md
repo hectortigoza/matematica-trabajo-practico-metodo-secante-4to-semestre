@@ -28,7 +28,7 @@
 | Servidor | `http.server` de la **biblioteca estándar** de Python | Conecta la interfaz con la lógica sin instalar nada. |
 | Gráficos | **Canvas 2D** (interfaz) y **SVG** generado en Python (informe) | Dibujados a mano, sin bibliotecas de gráficos. |
 | Ejecutable | **PyInstaller** | Empaqueta Python, el código y la interfaz en un solo `MetodoSecante.exe`. |
-| Pruebas | `unittest` (biblioteca estándar) | 40 pruebas automáticas. |
+| Pruebas | `unittest` (biblioteca estándar) | 42 pruebas automáticas. |
 | IDE | Visual Studio Code | — |
 | Control de versiones | Git + GitHub | — |
 | Tipografías | Archivo y STIX Two Text (licencia SIL OFL) | Incluidas en el proyecto: funciona **sin internet**. |
@@ -89,12 +89,12 @@ La secante reemplaza la derivada f′(xₙ) por el cociente incremental m, que e
 ### 2.3 Algoritmo
 
 ```
-Entrada: f, x₀, x₁, tolerancia, máximo de iteraciones, criterio de parada
+Entrada: f, x₀, x₁, error pedido (tolerancia), criterio de parada
 Salida:  raíz aproximada, tabla de iteraciones, estado final
 
  1. Calcular f(x₀) y f(x₁). Si alguno no está definido → informar "fuera del dominio".
  2. Si f(x₀) = 0 o f(x₁) = 0 → ese valor es la raíz exacta.
- 3. Para n = 1, 2, …, máximo:
+ 3. Para n = 1, 2, 3, … (hasta alcanzar el error pedido):
  4.     Si f(xₙ) − f(xₙ₋₁) = 0 → detener: la secante es horizontal (división por cero).
  5.     xₙ₊₁ ← xₙ − f(xₙ)·(xₙ − xₙ₋₁) / (f(xₙ) − f(xₙ₋₁))
  6.     Si xₙ₊₁ es infinito o crece sin control → detener: el método diverge.
@@ -104,14 +104,14 @@ Salida:  raíz aproximada, tabla de iteraciones, estado final
 10.     Si f(xₙ₊₁) = 0 → raíz exacta.
 11.     Si el error elegido < tolerancia → convergencia alcanzada.
 12.     xₙ₋₁ ← xₙ ,  xₙ ← xₙ₊₁       (se descarta el punto más viejo)
-13. Si se terminaron las iteraciones → informar que no se alcanzó la tolerancia.
+13. Protección: si tras 100 iteraciones el error sigue sin bajar → informar que no converge.
 ```
 
 **Diagrama de flujo**
 
 ```mermaid
 flowchart TD
-    A([Inicio]) --> B[/Leer f, x₀, x₁, tolerancia, máx. iteraciones, criterio/]
+    A([Inicio]) --> B[/Leer f, x₀, x₁, error pedido y criterio/]
     B --> V{¿Datos válidos?}
     V -- No --> VE([Mostrar errores por campo])
     V -- Sí --> C[Evaluar f x₀ y f x₁]
@@ -127,8 +127,8 @@ flowchart TD
     I -- No --> J[Evaluar f xₙ₊₁ · calcular Eₐ y εₐ]
     J --> K{¿Error < tolerancia?}
     K -- Sí --> KE([Raíz ≈ xₙ₊₁ · convergencia alcanzada])
-    K -- No --> L{¿n = máximo?}
-    L -- Sí --> LE([No se alcanzó la tolerancia])
+    K -- No --> L{¿100 iteraciones sin converger?}
+    L -- Sí --> LE([El método no converge])
     L -- No --> M[xₙ₋₁ ← xₙ · xₙ ← xₙ₊₁ · n ← n + 1]
     M --> G
 ```
@@ -180,7 +180,7 @@ El usuario elige uno de tres criterios:
 Además, el método **siempre** se detiene:
 
 - al encontrar f(xₙ₊₁) = 0 exactamente (raíz exacta);
-- al llegar al **máximo de iteraciones** (protección contra ciclos infinitos);
+- **no hay un máximo de iteraciones elegido por el usuario**: se itera hasta alcanzar el error pedido. Solo existe un límite interno de seguridad de 100 iteraciones, que actúa únicamente cuando el método **no converge** (sin él, el programa quedaría en un ciclo infinito). Cuando converge, la secante lo hace en pocas iteraciones;
 - ante **división por cero**, **divergencia** o **salida del dominio**, informando el motivo;
 - si las aproximaciones dejan de cambiar porque se llegó al límite de precisión de la máquina.
 
@@ -285,7 +285,7 @@ MATEMATICA/
 │   ├── index.html, css/estilos.css
 │   ├── js/                   app.js, lienzo.js (gráfico), pasos.js (animación), lineas.js, …
 │   └── fuentes/              Tipografías incluidas (funciona sin internet)
-├── tests/                    40 pruebas automáticas
+├── tests/                    42 pruebas automáticas
 └── docs/                     Esta documentación, la guía del código y las capturas
 ```
 
@@ -321,15 +321,14 @@ La interfaz usa la estética de una **hoja de papel milimetrado de dibujo técni
 
 | Zona | Contenido |
 |---|---|
-| Panel izquierdo | Función con vista previa matemática y derivada, teclado matemático, x₀ y x₁ con indicador de Bolzano en vivo, buscador de intervalos, criterio de parada, tolerancia, máximo de iteraciones, decimales y ejemplos. |
-| **Resultado** | Gráfico interactivo, raíz recuadrada, iteraciones, errores, cifras correctas, Bolzano, tabla de iteraciones, análisis automático y exportación. |
+| **Resolver** (página de inicio) | Arriba, los datos: la ecuación f(x) con vista previa y teclado matemático, los valores iniciales x₀ y x₁ y el error pedido. Abajo, dos cuadros lado a lado: a la izquierda **la tabla** (n, xₙ₋₁, xₙ, f(xₙ₋₁), f(xₙ), xₙ₊₁) que arranca con los valores iniciales; a la derecha **la comparativa del error**, fila por fila, con el **criterio de parada elegible desde la cabecera del cuadro**. Debajo, la raíz obtenida y la exportación. |
 | **Paso a paso** | Animación de cada iteración en 5 subpasos con la fórmula sustituida con los números reales. |
 | **Convergencia** | Error por iteración (escala logarítmica) y orden de convergencia estimado comparado con φ. |
 | **Comparar métodos** | Secante, Newton-Raphson, falsa posición y bisección sobre el mismo problema. |
 | **Teoría** | Fundamento, fórmula, algoritmo, condiciones, ventajas y limitaciones. |
 | **Historial** | Ejercicios resueltos, con la opción de volver a resolverlos. |
 
-![Pantalla de resultado](capturas/02-resultado.png)
+![Página Resolver: tabla a la izquierda, comparativa del error a la derecha](capturas/02-resultado.png)
 
 ---
 
@@ -340,7 +339,7 @@ La interfaz usa la estética de una **hoja de papel milimetrado de dibujo técni
 Fragmento central del bucle de iteraciones:
 
 ```python
-for n in range(1, max_iteraciones + 1):
+for n in range(1, limite_iteraciones + 1):     # sin máximo del usuario: límite de seguridad
 
     denominador = f_actual - f_anterior
     if denominador == 0:
@@ -430,13 +429,11 @@ Correspondencia con el punto 9 de la guía del trabajo práctico. El sistema **n
 | Función mal escrita | `x^3 - 4x + sen(x` | "Falta cerrar un paréntesis ')'" (con el lugar subrayado en rojo) |
 | Variable desconocida | `x + y` | "No se reconoce 'y'. La función debe depender solo de x…" |
 | Intervalo incorrecto | x₀ = x₁ | "x₀ y x₁ deben ser distintos: la secante necesita dos puntos diferentes…" |
-| Intervalo incorrecto (buscador) | desde ≥ hasta | "El extremo izquierdo debe ser menor que el derecho." |
 | División por cero | f(xₙ) = f(xₙ₋₁) | "La recta secante es horizontal y no corta al eje x. Probá con otros valores iniciales." |
 | División por cero en f | 1/x en x = 0 | "f(x) no se puede evaluar en … División por cero" |
 | Fuera del dominio | ln(x) con x₀ = −1 | "√x solo está definida para x ≥ 0…", "ln(x) solo está definido para x > 0…" |
 | Tolerancia inválida | 0, −1 o 10⁻²⁰ | "La tolerancia debe ser un número positivo…" / "…demasiado chica…" |
-| Iteraciones inválidas | 2.5, 0, −3 | "Debe ser un número entero." / "Debe estar entre 1 y 1000." |
-| Condiciones que impiden la convergencia | 1/x, x² + 1 | "El método diverge…" / "Se alcanzó el máximo de iteraciones…" |
+| Condiciones que impiden la convergencia | 1/x, x² + 1 | "El método diverge…" / "Después de 100 iteraciones el error todavía no es menor al pedido: el método no converge…" |
 | Función constante | f(x) = 5 | "La función es constante (no depende de x)…" |
 | Coma decimal | 0,001 | Se acepta y se convierte a 0.001 |
 | Valores como expresión | x₀ = pi/4 | Se acepta: los campos numéricos admiten expresiones constantes |
@@ -501,14 +498,14 @@ Tolerancia y criterio indicados; máximo 50 iteraciones. Las columnas de la dere
 
 ### 6.3 Verificación con herramientas de referencia
 
-La carpeta `tests/` contiene **40 pruebas automáticas** (`python -m unittest discover -s tests -t .`) que verifican:
+La carpeta `tests/` contiene **42 pruebas automáticas** (`python -m unittest discover -s tests -t .`) que verifican:
 
 - Las funciones matemáticas propias contra el módulo `math`, en miles de puntos (error relativo < 10⁻¹²).
 - El parser: precedencia, multiplicación implícita y errores de sintaxis con su posición.
 - La derivada simbólica contra el cociente incremental numérico.
 - La primera iteración del ejemplo, calculada a mano.
 - Raíces conocidas (√2, el número omega 0.5671…, el número de Dottie 0.7390…).
-- Todos los estados de error: división por cero, divergencia, dominio y máximo de iteraciones.
+- Todos los estados de error: división por cero, divergencia, dominio y falta de convergencia.
 - La validación de cada tipo de dato inválido.
 - El orden de convergencia ≈ φ y la detección de asíntotas.
 
@@ -520,7 +517,7 @@ Correspondencia con el punto 16 de la guía del trabajo práctico:
 
 | Funcionalidad sugerida | Implementación |
 |---|---|
-| Representación gráfica de funciones | Gráfico interactivo con zoom, desplazamiento, coordenadas y asíntotas. Vista previa en vivo mientras se escribe la función. |
+| Representación gráfica de funciones | Gráfico interactivo en el paso a paso, con zoom, desplazamiento, coordenadas y asíntotas. Vista previa matemática de la ecuación mientras se escribe. |
 | Gráficas de convergencia | Error por iteración (escala logarítmica) y orden de convergencia estimado. |
 | Comparación automática entre métodos | Secante contra Newton-Raphson, falsa posición y bisección, con tabla, gráfico y conclusiones. |
 | Cálculo y visualización del error | Error absoluto, relativo y cifras significativas (Scarborough). En la animación, el error se dibuja como una cota de plano técnico. |
@@ -533,8 +530,7 @@ Correspondencia con el punto 16 de la guía del trabajo práctico:
 
 Extras no pedidos:
 
-- Buscador de intervalos con cambio de signo, que sugiere x₀ y x₁ y distingue raíces de asíntotas.
-- Verificación del teorema de Bolzano, en vivo y en el resultado.
+- Verificación del teorema de Bolzano y detección de asíntotas (en el análisis y en el informe exportado).
 - Funciones matemáticas propias, sin la biblioteca `math`.
 - Funciona sin internet y sin instalar nada (ejecutable).
 
@@ -553,8 +549,9 @@ Extras no pedidos:
 ### Resolver un problema
 
 1. Escribir la función en **f(x) =**. Se aceptan `x^3 - 4x - 1`, `cos(x) - x`, `e^(-x) - x`, `2sin(x)`, `sqrt(x)`, `ln(x)`, `log(x)`, `pi`, `e`, etc. La multiplicación puede omitirse (`4x`).
-2. Ingresar **x₀** y **x₁**. Si no sabés cuáles usar, tocá "Buscar dónde cambia de signo f(x)".
-3. Elegir el **criterio de parada**, la **tolerancia** y el **máximo de iteraciones**.
-4. Presionar **Resolver** (o Enter).
-5. Recorrer las pestañas: **Paso a paso** (espacio = reproducir o pausar, flechas = avanzar o retroceder), **Convergencia**, **Comparar métodos**, **Teoría** e **Historial**.
-6. Exportar con los botones **Informe**, **Excel (CSV)** o **Texto**.
+2. Ingresar los valores iniciales **x₀** y **x₁**.
+3. Ingresar el **error** pedido (por ejemplo 0.0001).
+4. Presionar **Resolver** (o Enter). Aparecen la **tabla** y, a la derecha, la **comparativa del error**.
+5. Para cambiar el **criterio de parada**, elegirlo en la cabecera del cuadro del error: el problema se vuelve a resolver solo.
+6. Opcional: recorrer las pestañas **Paso a paso** (espacio = reproducir o pausar, flechas = avanzar o retroceder), **Convergencia**, **Comparar métodos**, **Teoría** e **Historial**.
+7. Exportar con los botones **Informe**, **Excel (CSV)** o **Texto**.

@@ -219,9 +219,11 @@ def secante_como_fila(resultado):
 def comparar_metodos(problema):
     """Ejecuta los cuatro métodos sobre el mismo problema y arma un resumen."""
     f = problema.funcion
-    args = (problema.tolerancia, problema.max_iteraciones, problema.criterio)
+    limite = problema.max_iteraciones or sec.LIMITE_SEGURIDAD
+    args = (problema.tolerancia, limite, problema.criterio)
 
-    resultado_secante = sec.metodo_secante(f, problema.x0, problema.x1, *args)
+    resultado_secante = sec.metodo_secante(f, problema.x0, problema.x1, problema.tolerancia,
+                                           problema.max_iteraciones, problema.criterio)
     metodos = [
         secante_como_fila(resultado_secante),
         newton_raphson(f, problema.x1, *args),

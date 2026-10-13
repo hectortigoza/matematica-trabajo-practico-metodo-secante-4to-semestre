@@ -334,7 +334,7 @@ Es **el archivo más importante**. Leelo entero, tiene muchos comentarios.
 ```python
 CONVERGIO        # se cumplió la tolerancia                       ✔ éxito
 RAIZ_EXACTA      # f(x) dio exactamente 0                          ✔ éxito
-MAX_ITERACIONES  # se terminaron las iteraciones
+MAX_ITERACIONES  # 100 iteraciones sin alcanzar el error: no converge
 DIVISION_CERO    # f(xₙ) = f(xₙ₋₁): la secante es horizontal
 FUERA_DOMINIO    # f no se puede evaluar en el nuevo punto
 DIVERGENCIA      # las aproximaciones se van al infinito
@@ -364,6 +364,15 @@ if f0 == 0 or f1 == 0:
     resultado.estado = RAIZ_EXACTA
 ```
 
+**Sin máximo de iteraciones del usuario.** El usuario no elige un máximo: se itera hasta que el error sea menor al pedido. Solo hay un límite interno de seguridad:
+
+```python
+LIMITE_SEGURIDAD = 100
+limite_iteraciones = max_iteraciones or LIMITE_SEGURIDAD
+```
+
+Ese límite **solo actúa si el método no converge**. Ejemplo: x² + 1 = 0 no tiene raíz real, y sin límite el programa quedaría iterando para siempre. Cuando la secante converge, lo hace en pocas iteraciones (5 en el ejemplo del enunciado).
+
 **Límite de divergencia (relativo a los datos):**
 
 ```python
@@ -376,7 +385,7 @@ Si una aproximación se aleja más de un millón de veces la escala de los valor
 **El bucle principal:**
 
 ```python
-for n in range(1, max_iteraciones + 1):
+for n in range(1, limite_iteraciones + 1):
 
     if x_actual == x_anterior:          # (1) ya no cambia: límite de precisión de la máquina
         ...CONVERGIO
@@ -407,7 +416,7 @@ for n in range(1, max_iteraciones + 1):
     x_anterior, f_anterior = x_actual, f_actual
     x_actual, f_actual = x_siguiente, f_siguiente
 
-# (11) si salimos del for sin return: se agotaron las iteraciones
+# (11) si salimos del for sin return: 100 iteraciones sin converger
 resultado.estado = MAX_ITERACIONES
 ```
 
@@ -415,7 +424,7 @@ resultado.estado = MAX_ITERACIONES
 - **(3)** es la fórmula de la teoría, escrita tal cual.
 - **(10)** es lo que distingue a la secante de la falsa posición: **siempre** se descarta el punto más viejo, sin mirar los signos.
 - En cada iteración se evalúa f **una sola vez** (f(xₙ₊₁)). f(xₙ) ya se conocía de la vuelta anterior. Por eso es eficiente.
-- `max_iteraciones` garantiza que el bucle **siempre termina**.
+- El límite de seguridad garantiza que el bucle **siempre termina**, aunque el método no converja.
 
 ### `calcular_errores` y `cumple_criterio`
 
@@ -445,7 +454,6 @@ Convierte lo que escribió el usuario en un número:
   - x₀ ≠ x₁ (la secante necesita dos puntos distintos);
   - tolerancia > 0 y ≥ 10⁻¹⁵ (la máquina tiene ~16 cifras);
   - con el criterio relativo, la tolerancia es un % y debe ser < 100;
-  - máximo de iteraciones entero, entre 1 y 1000;
   - la función debe depender de x (si es constante, no tiene sentido buscarle raíces).
 - Si todo está bien, devuelve un objeto `Problema` con los valores ya convertidos.
 
@@ -474,9 +482,8 @@ Si al final |f| es mayor que al principio, es una asíntota.
 
 ### `buscar_intervalos(f, desde, hasta)`
 
-Divide el rango en subintervalos iguales y devuelve los que tienen cambio de signo (y no son asíntotas). La pantalla los ofrece como x₀ y x₁ sugeridos.
+Divide el rango en subintervalos iguales y devuelve los que tienen cambio de signo (y no son asíntotas). Sirve para sugerir x₀ y x₁; está disponible en la API (`/api/buscar`), pero no se muestra en la página de inicio para mantenerla simple.
 
-![El buscador encuentra las raíces de tan(x) − x y descarta las asíntotas](capturas/08-buscar-intervalos.png)
 
 ### `orden_convergencia(iteraciones)`: el orden p
 
@@ -553,7 +560,7 @@ No es matemática, pero conviene saber qué hace cada archivo por si preguntan c
 python -m unittest discover -s tests -t .
 ```
 
-Son **40 pruebas**, todas deben dar `OK`. Sirven para demostrar que *"los resultados fueron verificados"*, como pide la guía:
+Son **42 pruebas**, todas deben dar `OK`. Sirven para demostrar que *"los resultados fueron verificados"*, como pide la guía:
 
 - `test_matematica.py`: compara nuestro sen, cos, exp, ln, √… con el `math` de Python en miles de puntos. **Es el único lugar donde aparece `math`, y solo como referencia.**
 - `test_expresiones.py`: precedencia, multiplicación implícita, errores de sintaxis y derivadas. Las derivadas se comparan contra el cociente incremental (f(x+h) − f(x−h))/2h.
@@ -585,10 +592,10 @@ Mide qué tan rápido baja el error: eₙ₊₁ ≈ C·eₙᵖ. Para la secante,
 Con el error aproximado: la diferencia entre dos aproximaciones consecutivas, Eₐ = |xₙ₊₁ − xₙ|, o en forma relativa εₐ = |Eₐ/xₙ₊₁|·100 %.
 
 **¿Cuál es el criterio de parada?**
-Error (absoluto, relativo o |f(x)|, a elección del usuario) menor que la tolerancia. Además se detiene si f(x) = 0 exacto, si se llega al máximo de iteraciones o si hay división por cero, divergencia o salida del dominio.
+El error (|xₙ₊₁ − xₙ|, relativo % o |f(xₙ₊₁)|, elegido en la cabecera del cuadro del error) menor que el error pedido. Además se detiene si f(x) = 0 exacto, o si hay división por cero, divergencia o salida del dominio.
 
-**¿Por qué el máximo de iteraciones?**
-Porque el método no garantiza convergencia. Sin un máximo, si diverge, el programa podría quedar en un ciclo infinito.
+**¿Hay un máximo de iteraciones?**
+No para el usuario: se itera hasta alcanzar el error pedido. Internamente hay un límite de seguridad de 100 iteraciones, que solo actúa si el método **no converge** (por ejemplo x² + 1 = 0, que no tiene raíz real). Sin ese límite el programa quedaría en un ciclo infinito.
 
 **¿Usaron alguna biblioteca para calcular?**
 No. El seno, el coseno, la exponencial y el logaritmo se calculan con series de Taylor (`matematica.py`). La función se interpreta con un parser propio, sin `eval` (`expresiones.py`). La derivada para Newton la calcula nuestro derivador simbólico. `math` solo aparece en las pruebas, para comparar.

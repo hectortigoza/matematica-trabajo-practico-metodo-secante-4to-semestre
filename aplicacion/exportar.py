@@ -295,7 +295,7 @@ def a_html(datos, decimales=8):
         "funcion": datos["funcion"]["html"],
         "x0": fmt(resultado["x0"], decimales), "x1": fmt(resultado["x1"], decimales),
         "tol": resultado["tolerancia"], "criterio": e(resultado["criterio_descripcion"]),
-        "maxit": resultado["max_iteraciones"],
+        "maxit": resultado["max_iteraciones"] or "Sin límite: se itera hasta alcanzar el error pedido",
         "clase": "" if resultado["exitoso"] else "mal",
         "estado": e(ESTADOS.get(resultado["estado"], resultado["estado"])),
         "raiz": fmt(resultado["raiz"], decimales + 4),

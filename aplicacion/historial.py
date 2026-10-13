@@ -48,8 +48,8 @@ def agregar(problema, resultado):
         "x0": problema["x0"],
         "x1": problema["x1"],
         "tolerancia": problema["tolerancia"],
-        "max_iteraciones": problema["max_iteraciones"],
-        "criterio": problema["criterio"],
+        "max_iteraciones": problema.get("max_iteraciones") or "",
+        "criterio": problema.get("criterio") or "absoluto",
         "raiz": resultado.get("raiz"),
         "iteraciones": resultado.get("cantidad_iteraciones"),
         "estado": resultado.get("estado"),
@@ -57,7 +57,7 @@ def agregar(problema, resultado):
     }
     clave = ("funcion", "x0", "x1", "tolerancia", "max_iteraciones", "criterio")
     with _candado:
-        entradas = [e for e in _leer() if any(str(e.get(c)) != str(entrada[c]) for c in clave)]
+        entradas = [e for e in _leer() if any(str(e.get(c) or "") != str(entrada[c] or "") for c in clave)]
         entradas.insert(0, entrada)
         _escribir(entradas[:MAXIMO_ENTRADAS])
     return entrada

@@ -75,6 +75,17 @@ class TestSecante(unittest.TestCase):
         r = resolver("1/x", -1, 2)
         self.assertEqual(r.estado, sec.DIVERGENCIA)
 
+    def test_sin_maximo_itera_hasta_el_error(self):
+        r = sec.metodo_secante(Expresion("x^3 - 4x - 1"), 1, 2, 1e-12)
+        self.assertEqual(r.estado, sec.CONVERGIO)
+        self.assertLess(r.error_absoluto, 1e-12)
+
+    def test_sin_maximo_no_converge_se_detiene(self):
+        # f(x) = x² + 1 no tiene raíces reales: el límite de seguridad evita un ciclo infinito
+        r = sec.metodo_secante(Expresion("x^2 + 1"), 0.5, 3, 1e-10)
+        self.assertFalse(r.exitoso)
+        self.assertLessEqual(len(r.iteraciones), sec.LIMITE_SEGURIDAD)
+
     def test_maximo_iteraciones(self):
         r = resolver("x^3 - 4x - 1", 1, 2, 1e-14, 2)
         self.assertEqual(r.estado, sec.MAX_ITERACIONES)

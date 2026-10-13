@@ -108,8 +108,11 @@ def validar_problema(datos):
     x0 = intentar(leer_numero, datos.get("x0"), "x0", "el valor inicial x₀")
     x1 = intentar(leer_numero, datos.get("x1"), "x1", "el valor inicial x₁")
     tolerancia = intentar(leer_numero, datos.get("tolerancia"), "tolerancia", "la tolerancia")
-    max_iteraciones = intentar(leer_entero, datos.get("max_iteraciones"), "max_iteraciones",
-                               "el máximo de iteraciones")
+    # El máximo de iteraciones es opcional: si no se envía, se itera hasta alcanzar el error
+    max_iteraciones = None
+    if str(datos.get("max_iteraciones") or "").strip():
+        max_iteraciones = intentar(leer_entero, datos.get("max_iteraciones"), "max_iteraciones",
+                                   "el máximo de iteraciones")
 
     criterio = datos.get("criterio") or "absoluto"
     if criterio not in CRITERIOS:

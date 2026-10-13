@@ -61,6 +61,11 @@ DIVERGENCIA = "divergencia"
 
 ESTADOS_EXITOSOS = (CONVERGIO, RAIZ_EXACTA)
 
+# No hay máximo de iteraciones elegido por el usuario: se itera hasta alcanzar el error
+# pedido. Este límite solo protege de un ciclo infinito cuando el método NO converge
+# (la secante, si converge, lo hace en pocas iteraciones: orden ≈ 1.618).
+LIMITE_SEGURIDAD = 100
+
 # Si una aproximación supera este valor en módulo se considera que el método diverge
 LIMITE_DIVERGENCIA = 1e12
 # También diverge si se aleja más de un millón de veces la escala de los valores iniciales
@@ -182,7 +187,7 @@ def _num(x):
     return "%.10g" % x
 
 
-def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRITERIO_ABSOLUTO):
+def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=None, criterio=CRITERIO_ABSOLUTO):
     """
     Aplica el método de la secante a la función f.
 
@@ -190,13 +195,15 @@ def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRIT
         f                 función de una variable (ej. un objeto Expresion)
         x0, x1            aproximaciones iniciales (distintas)
         tolerancia        precisión deseada (en % si el criterio es relativo)
-        max_iteraciones   límite de seguridad
+        max_iteraciones   opcional; si no se indica se itera hasta alcanzar el error
+                          pedido (con LIMITE_SEGURIDAD como protección)
         criterio          'absoluto', 'relativo' o 'residuo'
 
     Devuelve un ResultadoSecante con la raíz, el estado final y la tabla
     completa de iteraciones.
     """
     resultado = ResultadoSecante(x0, x1, tolerancia, max_iteraciones, criterio)
+    limite_iteraciones = max_iteraciones or LIMITE_SEGURIDAD
 
     # --- Paso 0: evaluar la función en los dos puntos iniciales -------------
     f0, error = _evaluar(f, x0, "x₀")
@@ -223,7 +230,7 @@ def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRIT
                  FACTOR_DIVERGENCIA * (1 + max(m.valor_absoluto(x0), m.valor_absoluto(x1))))
 
     # --- Iteraciones ---------------------------------------------------------
-    for n in range(1, max_iteraciones + 1):
+    for n in range(1, limite_iteraciones + 1):
 
         if x_actual == x_anterior:
             # Las aproximaciones ya no cambian: se llegó al límite de precisión
@@ -289,8 +296,14 @@ def metodo_secante(f, x0, x1, tolerancia=1e-6, max_iteraciones=50, criterio=CRIT
         x_actual, f_actual = x_siguiente, f_siguiente
 
     resultado.estado = MAX_ITERACIONES
-    resultado.mensaje = (
-        "Se alcanzó el máximo de %d iteraciones sin llegar a la tolerancia pedida. "
-        "El valor obtenido es una aproximación; podés aumentar el máximo de iteraciones "
-        "o probar otros valores iniciales." % max_iteraciones)
+    if max_iteraciones is None:
+        resultado.mensaje = (
+            "Después de %d iteraciones el error todavía no es menor al pedido: el método no "
+            "converge con estos valores iniciales. Puede que la ecuación no tenga una raíz real "
+            "cerca, o que haya que partir de valores más próximos a la raíz."
+            % limite_iteraciones)
+    else:
+        resultado.mensaje = (
+            "Se alcanzó el máximo de %d iteraciones sin llegar a la tolerancia pedida. "
+            "El valor obtenido es una aproximación." % max_iteraciones)
     return resultado

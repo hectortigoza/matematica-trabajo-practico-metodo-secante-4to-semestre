@@ -1,7 +1,7 @@
-// app.js — Interfaz principal: formulario, pestañas, resultados e historial.
+// app.js — Interfaz principal: formulario, tabla, comparativa del error, pestañas e historial.
 
 import { llamar } from "./api.js";
-import { numHTML, corto, escapar, paraCampo, reducirMovimiento } from "./formato.js";
+import { numHTML, corto, escapar, reducirMovimiento } from "./formato.js";
 import { Lienzo } from "./lienzo.js";
 import { PasoAPaso } from "./pasos.js";
 import { graficoLineas, redibujarTodos } from "./lineas.js";
@@ -9,23 +9,10 @@ import { graficoLineas, redibujarTodos } from "./lineas.js";
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 
-const EJEMPLOS = [
-  { funcion: "x^3 - 4x - 1", x0: "1", x1: "2", nota: "ejemplo del enunciado" },
-  { funcion: "cos(x) - x", x0: "0", x1: "1", nota: "trascendente" },
-  { funcion: "e^(-x) - x", x0: "0", x1: "1", nota: "exponencial" },
-  { funcion: "x^2 - 2", x0: "1", x1: "2", nota: "calcula √2" },
-  { funcion: "x*sin(x) - 1", x0: "0", x1: "2", nota: "producto" },
-  { funcion: "ln(x) + x - 2", x0: "1", x1: "3", nota: "logaritmo" },
-  { funcion: "x^3 - 4x - 1", x0: "-1", x1: "0", nota: "otra de sus 3 raíces" },
-  { funcion: "(x - 1)^2", x0: "0", x1: "0.5", nota: "raíz doble: más lenta" },
-  { funcion: "x^2 + 1", x0: "0", x1: "1", nota: "sin raíces reales" },
-  { funcion: "x^2 - 4", x0: "-1", x1: "1", nota: "secante horizontal" },
-];
-
 const ESTADOS = {
   convergio: ["bien", "Convergencia alcanzada"],
   raiz_exacta: ["bien", "Raíz exacta encontrada"],
-  max_iteraciones: ["alerta", "Máximo de iteraciones alcanzado"],
+  max_iteraciones: ["alerta", "No converge"],
   division_cero: ["mal", "Detenido: división por cero"],
   fuera_dominio: ["mal", "Detenido: fuera del dominio"],
   divergencia: ["mal", "Detenido: el método diverge"],
@@ -33,18 +20,11 @@ const ESTADOS = {
   discontinuidad: ["mal", "Converge a una discontinuidad"],
 };
 
-const AYUDA_CRITERIO = {
-  absoluto: "Se detiene cuando |xₙ₊₁ − xₙ| es menor que la tolerancia.",
-  relativo: "La tolerancia es un porcentaje: se detiene cuando εₐ = |(xₙ₊₁ − xₙ)/xₙ₊₁|·100 es menor.",
-  residuo: "Se detiene cuando |f(xₙ₊₁)| es menor que la tolerancia.",
-};
-
 const COLORES_METODO = { "Secante": "lapiz", "Newton-Raphson": "tinta", "Falsa posición": "ocre", "Bisección": "verde" };
 
 const estado = {
   datos: null,            // última respuesta de /api/resolver
   decimales: 8,
-  vistaPrevia: null,      // { texto } de la función válida que se está escribiendo
   autoplayPendiente: false,
 };
 
@@ -55,7 +35,6 @@ const estado = {
 const form = $("#formulario");
 const campo = (nombre) => $(`#${nombre}`);
 
-const lienzoPrincipal = new Lienzo($("#grafico-principal"));
 const lienzoPasos = new Lienzo($("#grafico-pasos"));
 const pasos = new PasoAPaso(lienzoPasos, {
   explicacion: $("#explicacion"),
@@ -85,14 +64,17 @@ function demorar(fn, ms) {
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
+function criterio() {
+  return campo("criterio").value;
+}
+
 function datosFormulario() {
   return {
     funcion: campo("funcion").value,
     x0: campo("x0").value,
     x1: campo("x1").value,
     tolerancia: campo("tolerancia").value,
-    max_iteraciones: campo("max_iteraciones").value,
-    criterio: $("input[name=criterio]:checked").value,
+    criterio: criterio(),
   };
 }
 
@@ -101,15 +83,15 @@ function cargarEnFormulario(d) {
   campo("x0").value = d.x0;
   campo("x1").value = d.x1;
   if (d.tolerancia !== undefined) campo("tolerancia").value = d.tolerancia;
-  if (d.max_iteraciones !== undefined) campo("max_iteraciones").value = d.max_iteraciones;
-  if (d.criterio) {
-    const radio = $(`input[name=criterio][value="${d.criterio}"]`);
-    if (radio) radio.checked = true;
-    actualizarAyudaCriterio();
-  }
+  if (d.criterio) campo("criterio").value = d.criterio;
+  actualizarUnidadError();
   limpiarErrores();
   analizarFuncion();
-  actualizarBolzanoVivo();
+}
+
+/** Con el criterio relativo, el error pedido es un porcentaje. */
+function actualizarUnidadError() {
+  $("#unidad-error").textContent = criterio() === "relativo" ? "(%)" : "";
 }
 
 // ======================================================================
@@ -148,7 +130,7 @@ function marcarErrorFuncion(error) {
 }
 
 // ======================================================================
-//  Vista previa de la función mientras se escribe
+//  Vista previa de la ecuación mientras se escribe
 // ======================================================================
 
 let pedidoAnalisis = 0;
@@ -163,12 +145,6 @@ async function analizarFuncion() {
     vista.innerHTML = "";
     contenedor.classList.remove("con-error");
     $(".error-campo", contenedor).textContent = "";
-    estado.vistaPrevia = null;
-    if (!estado.datos) {
-      lienzoPrincipal.fijarFuncion(null);
-      $("#grafico-vacio-texto").textContent = "Escribí una función para ver su gráfica.";
-      $("#grafico-vacio").hidden = false;
-    }
     return;
   }
 
@@ -181,160 +157,16 @@ async function analizarFuncion() {
     $(".error-campo", contenedor).textContent = e.mensaje;
     if (e.posicion !== undefined) marcarErrorFuncion(e);
     else vista.innerHTML = "";
-    // Mientras la función tenga errores no se muestra una gráfica que no le corresponde
-    if (!estado.datos) {
-      estado.vistaPrevia = null;
-      lienzoPrincipal.fijarFuncion(null);
-      $("#grafico-vacio-texto").textContent = "Corregí la función para ver su gráfica.";
-      $("#grafico-vacio").hidden = false;
-      $("#bolzano-vivo").textContent = "";
-    }
     return;
   }
 
   contenedor.classList.remove("con-error");
   $(".error-campo", contenedor).textContent = "";
-  vista.innerHTML = `<i>f</i>(<i>x</i>) = ${r.html}<span class="vista-derivada"><i>f′</i>(<i>x</i>) = ${r.derivada_html}</span>`;
+  vista.innerHTML = `<i>f</i>(<i>x</i>) = ${r.html}`;
 
-  const cambio = !estado.vistaPrevia || estado.vistaPrevia.texto !== r.texto;
-  estado.vistaPrevia = { texto: r.texto };
-
-  // Si la función cambió, el resultado anterior deja de corresponder
+  // Si la ecuación cambió, la tabla anterior deja de corresponder
   if (estado.datos && estado.datos.funcion.texto !== r.texto) invalidarResultado();
-
-  if (!estado.datos && cambio) {
-    $("#grafico-vacio").hidden = true;
-    lienzoPrincipal.fijarVista(vistaInicial());
-    await lienzoPrincipal.fijarFuncion(r.texto, { ajustar: true });
-    actualizarBolzanoVivo();
-  }
 }
-
-function valoresIniciales() {
-  const leer = (id) => {
-    const v = parseFloat(campo(id).value.replace(",", "."));
-    return Number.isFinite(v) ? v : null;
-  };
-  return [leer("x0"), leer("x1")];
-}
-
-function vistaInicial() {
-  const [x0, x1] = valoresIniciales();
-  if (x0 !== null && x1 !== null && x0 !== x1) {
-    const centro = (x0 + x1) / 2;
-    const ancho = Math.max(Math.abs(x1 - x0) * 4, 4);
-    return { xmin: centro - ancho / 2, xmax: centro + ancho / 2, ymin: -5, ymax: 5 };
-  }
-  return { xmin: -6, xmax: 6, ymin: -5, ymax: 5 };
-}
-
-/** Indicador de Bolzano en vivo mientras se escriben x₀ y x₁. */
-const actualizarBolzanoVivo = demorar(async () => {
-  const el = $("#bolzano-vivo");
-  const [x0, x1] = valoresIniciales();
-  lienzoPrincipal.solicitarDibujo();
-  if (!estado.vistaPrevia || x0 === null || x1 === null || x0 === x1) { el.textContent = ""; return; }
-  const r = await llamar("muestrear", {
-    funcion: estado.vistaPrevia.texto, desde: Math.min(x0, x1), hasta: Math.max(x0, x1), puntos: 2,
-  });
-  if (!r.ok) { el.textContent = ""; return; }
-  const [[, fa], [, fb]] = r.curva;
-  if (fa === null || fb === null) {
-    el.className = "bolzano-vivo sin-cambio";
-    el.innerHTML = "<b>f no está definida</b> en alguno de los valores iniciales.";
-    return;
-  }
-  const fx0 = x0 < x1 ? fa : fb, fx1 = x0 < x1 ? fb : fa;
-  const hayCambio = fx0 * fx1 <= 0;
-  el.className = `bolzano-vivo ${hayCambio ? "" : "sin-cambio"}`;
-  el.innerHTML = `f(x₀) = ${corto(fx0, 5)}, f(x₁) = ${corto(fx1, 5)} · ` +
-    (hayCambio ? "<b>hay cambio de signo</b>" : "<b>sin cambio de signo</b> (la secante igual puede funcionar)");
-}, 250);
-
-// ======================================================================
-//  Capa del gráfico principal
-// ======================================================================
-
-lienzoPrincipal.capas.push((ctx, L) => {
-  const c = L.c;
-  const etiqueta = (x, texto, color) => {
-    ctx.font = `italic 15px ${c.fuenteMat}`;
-    ctx.fillStyle = color;
-    ctx.textAlign = "center";
-    const y = Math.min(L.alto - 8, Math.max(18, L.aY(0) + 20));
-    ctx.fillText(texto, L.aX(x), y);
-  };
-
-  if (!estado.datos) {
-    // Antes de resolver: marcar x₀ y x₁
-    const [x0, x1] = valoresIniciales();
-    for (const [x, nombre] of [[x0, "x₀"], [x1, "x₁"]]) {
-      if (x === null || !estado.vistaPrevia) continue;
-      ctx.strokeStyle = c.lapiz;
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.moveTo(L.aX(x), 0);
-      ctx.lineTo(L.aX(x), L.alto);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const y = L.valorEn(x);
-      if (y !== null) {
-        ctx.fillStyle = c.lapiz;
-        ctx.beginPath(); ctx.arc(L.aX(x), L.aY(y), 5, 0, Math.PI * 2); ctx.fill();
-      }
-      // Etiqueta arriba del gráfico, para no pisar la escala del eje x
-      ctx.font = `italic 16px ${c.fuenteMat}`;
-      ctx.fillStyle = c.lapiz;
-      ctx.textAlign = "center";
-      ctx.fillText(nombre, L.aX(x), 20);
-    }
-    return;
-  }
-
-  // Después de resolver: todas las secantes y la raíz
-  const r = estado.datos.resultado;
-  r.iteraciones.forEach((it, k) => {
-    const alfa = Math.max(0.18, 0.75 - k * 0.12);
-    ctx.globalAlpha = alfa;
-    ctx.strokeStyle = c.lapiz;
-    ctx.lineWidth = 1.4;
-    ctx.setLineDash([6, 4]);
-    ctx.beginPath();
-    ctx.moveTo(L.aX(it.x_anterior), L.aY(it.f_anterior));
-    ctx.lineTo(L.aX(it.x_siguiente), L.aY(0));
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = c.lapiz;
-    ctx.beginPath(); ctx.arc(L.aX(it.x_siguiente), L.aY(0), 3, 0, Math.PI * 2); ctx.fill();
-  });
-  ctx.globalAlpha = 1;
-  for (const [x, y] of [[r.x0, r.f_x0], [r.x1, r.f_x1]]) {
-    if (y === null || y === undefined) continue;
-    ctx.fillStyle = c.tinta;
-    ctx.beginPath(); ctx.arc(L.aX(x), L.aY(y), 4.5, 0, Math.PI * 2); ctx.fill();
-  }
-  if (r.raiz !== null && r.exitoso) {
-    ctx.strokeStyle = c.lapiz;
-    ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.arc(L.aX(r.raiz), L.aY(0), 8, 0, Math.PI * 2); ctx.stroke();
-    ctx.font = `italic 15px ${c.fuenteMat}`;
-    ctx.fillStyle = c.lapiz;
-    ctx.textAlign = "left";
-    ctx.fillText(`x* ≈ ${corto(r.raiz, 8)}`, L.aX(r.raiz) + 12, L.aY(0) - 12);
-  }
-});
-
-lienzoPrincipal.alAjustar = () => {
-  if (estado.datos) {
-    const [desde, hasta] = estado.datos.rango;
-    lienzoPrincipal.fijarVista({ ...lienzoPrincipal.vista, xmin: desde, xmax: hasta });
-    lienzoPrincipal.ajustarY();
-  } else {
-    lienzoPrincipal.fijarVista(vistaInicial());
-    lienzoPrincipal.ajustarY();
-  }
-};
 
 // ======================================================================
 //  Resolver
@@ -355,11 +187,10 @@ async function resolver() {
   estado.datos = r;
   estado.autoplayPendiente = true;
   renderizarTodo();
-  $("#resultado-contenido").classList.remove("revelar");
-  void $("#resultado-contenido").offsetWidth;
-  $("#resultado-contenido").classList.add("revelar");
-  avisar(r.resultado.exitoso ? `Raíz encontrada en ${r.resultado.cantidad_iteraciones} iteraciones.` : r.resultado.mensaje,
-    r.resultado.exitoso ? "" : "error");
+  const contenido = $("#resultado-contenido");
+  contenido.classList.remove("revelar");
+  void contenido.offsetWidth;
+  contenido.classList.add("revelar");
   cargarHistorial();
 }
 
@@ -367,6 +198,7 @@ function invalidarResultado() {
   estado.datos = null;
   pasos.pausar();
   $("#resultado-contenido").hidden = true;
+  $("#resolver-vacio").hidden = false;
   $$("[data-sin-datos]").forEach((el) => { el.hidden = false; });
   $$("[data-con-datos]").forEach((el) => { el.hidden = true; });
 }
@@ -374,57 +206,79 @@ function invalidarResultado() {
 function renderizarTodo() {
   const d = estado.datos;
   if (!d) return;
-  $("#grafico-vacio").hidden = true;
+  $("#resolver-vacio").hidden = true;
   $("#resultado-contenido").hidden = false;
   $$("[data-sin-datos]").forEach((el) => { el.hidden = true; });
   $$("[data-con-datos]").forEach((el) => { el.hidden = false; });
 
-  renderResultado(d);
+  renderTablas(d);
   renderConvergencia(d);
   renderComparacion(d);
   pasos.cargar(d, estado.decimales);
   if (pestanaActiva() === "pasos") iniciarAutoplay();
 }
 
-function renderResultado(d) {
+/** Valor del error según el criterio elegido en la cabecera del cuadro. */
+function errorSegunCriterio(it, criterioActual) {
+  if (criterioActual === "relativo") return it.error_relativo;
+  if (criterioActual === "residuo") return Math.abs(it.f_siguiente);
+  return it.error_absoluto;
+}
+
+function renderTablas(d) {
   const r = d.resultado;
   const dec = estado.decimales;
-  const [clase, texto] = ESTADOS[r.estado] || ["alerta", r.estado];
+  const its = r.iteraciones;
+  const tol = r.tolerancia;
+  const unidad = r.criterio === "relativo" ? " %" : "";
+  const ultima = its.length - 1;
 
-  $("#respuesta-estado").innerHTML = `<span class="estado ${clase}">${texto}</span>`;
-  $("#respuesta-raiz").innerHTML = r.raiz === null ? "—" : `<i>x</i> ≈ ${numHTML(r.raiz, dec + 2)}`;
-  $("#respuesta-fx").innerHTML = r.f_raiz === null ? "" : `f(x) = ${numHTML(r.f_raiz, dec)}`;
-  $("#dato-iteraciones").textContent = r.cantidad_iteraciones;
-  $("#dato-error-abs").innerHTML = numHTML(r.error_absoluto, dec);
-  $("#dato-error-rel").innerHTML = r.error_relativo === null ? "—" : `${numHTML(r.error_relativo, dec)} %`;
-  $("#dato-cifras").textContent = d.analisis.cifras_significativas ?? "—";
-  $("#respuesta-mensaje").textContent = r.mensaje;
-
-  const v = d.verificacion;
-  const nota = $("#nota-bolzano");
-  nota.className = `nota nota-bolzano ${v.cumple ? "" : "alerta"}`;
-  nota.innerHTML = `<p class="nota-titulo">Teorema de Bolzano en [x₀, x₁]</p><p>${escapar(v.mensaje)}</p>` +
-    (v.detalle.length ? `<ul>${v.detalle.map((t) => `<li>${escapar(t)}</li>`).join("")}</ul>` : "");
-
-  const cuerpo = $("#tabla-iteraciones tbody");
-  cuerpo.innerHTML = r.iteraciones.map((it, k) => `
-    <tr data-i="${k}" class="${k === r.iteraciones.length - 1 && r.exitoso ? "final" : ""}" title="Ver la iteración ${it.n} animada">
+  // ---- Cuadro izquierdo: la tabla con los valores iniciales y los resultados de la fórmula
+  $("#tabla-iteraciones tbody").innerHTML = its.map((it, k) => `
+    <tr data-i="${k}" class="${k === ultima && r.exitoso ? "final" : ""}" title="Ver la iteración ${it.n} paso a paso">
       <td>${it.n}</td>
       <td>${numHTML(it.x_anterior, dec)}</td><td>${numHTML(it.x_actual, dec)}</td>
       <td>${numHTML(it.f_anterior, dec)}</td><td>${numHTML(it.f_actual, dec)}</td>
-      <td class="col-nueva">${numHTML(it.x_siguiente, dec)}</td><td>${numHTML(it.f_siguiente, dec)}</td>
-      <td>${numHTML(it.error_absoluto, dec)}</td>
-      <td>${it.error_relativo === null ? "—" : numHTML(it.error_relativo, dec)}</td>
-    </tr>`).join("") || `<tr><td colspan="9" class="tenue" style="text-align:center">No se realizaron iteraciones.</td></tr>`;
+      <td class="col-nueva">${numHTML(it.x_siguiente, dec)}</td>
+    </tr>`).join("")
+    || `<tr><td colspan="6" class="tenue" style="text-align:center">No se realizaron iteraciones.</td></tr>`;
 
-  const lista = [
-    ...d.analisis.conclusiones.map((t) => `<li>${escapar(t)}</li>`),
-    ...d.analisis.advertencias.map((t) => `<li class="advertencia">${escapar(t)}</li>`),
-  ];
-  $("#conclusiones").innerHTML = lista.join("") || "<li>Sin observaciones.</li>";
+  // ---- Cuadro derecho: la comparativa del error contra el error pedido
+  $("#tabla-error tbody").innerHTML = its.map((it, k) => {
+    const error = errorSegunCriterio(it, r.criterio);
+    const cumple = k === ultima && r.exitoso;
+    const comparacion = error === null
+      ? "—"
+      : cumple
+        ? `&lt; ${tol}${unidad} <b>→ se detiene</b>`
+        : `≥ ${tol}${unidad} → sigue iterando`;
+    return `<tr class="${cumple ? "final" : ""}">
+      <td>${it.n}</td>
+      <td>${error === null ? "—" : numHTML(error, dec) + unidad}</td>
+      <td class="comparacion ${cumple ? "cumple" : ""}">${comparacion}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
 
-  lienzoPrincipal.fijarCurva(d.funcion.texto, d.curva);
-  lienzoPrincipal.alAjustar();
+  // ---- Resultado final
+  const [clase, texto] = ESTADOS[r.estado] || ["alerta", r.estado];
+  const final = $("#resultado-final");
+  if (r.exitoso) {
+    final.innerHTML = `
+      <span class="estado ${clase}">${texto}</span>
+      <p class="raiz-final">Raíz ≈ <b>${numHTML(r.raiz, dec)}</b></p>
+      <p class="tenue">${escapar(r.mensaje)} El error ${errorNombre(r.criterio)} quedó en
+        ${numHTML(errorSegunCriterio(its[ultima] || {}, r.criterio) ?? 0, dec)}${unidad}, menor que ${tol}${unidad}.</p>`;
+  } else {
+    final.innerHTML = `
+      <span class="estado ${clase}">${texto}</span>
+      <p class="tenue">${escapar(r.mensaje)}</p>`;
+  }
+}
+
+function errorNombre(criterioActual) {
+  if (criterioActual === "relativo") return "relativo |xₙ₊₁ − xₙ| / |xₙ₊₁|";
+  if (criterioActual === "residuo") return "|f(xₙ₊₁)|";
+  return "|xₙ₊₁ − xₙ|";
 }
 
 function renderConvergencia(d) {
@@ -451,9 +305,8 @@ function renderConvergencia(d) {
   parrafos.push(`<p><b>${textoEstado}.</b> ${escapar(r.mensaje)}</p>`);
   if (a.orden_estimado !== null) {
     parrafos.push(`<p>El orden de convergencia estimado con las últimas iteraciones es <b>p ≈ ${a.orden_estimado.toFixed(3)}</b>. ` +
-      `La teoría predice φ = (1 + √5)/2 ≈ 1.618 cuando f′(r) ≠ 0. Eso significa que, cerca de la raíz, ` +
-      `<b>la cantidad de cifras correctas se multiplica por ≈ 1.6 en cada iteración</b>. En el gráfico de la izquierda se ve ` +
-      `como una curva que cae cada vez más rápido.</p>`);
+      `La teoría predice φ = (1 + √5)/2 ≈ 1.618 cuando f′(r) ≠ 0: cerca de la raíz, ` +
+      `<b>la cantidad de cifras correctas se multiplica por ≈ 1.6 en cada iteración</b>.</p>`);
   } else {
     parrafos.push("<p>Hacen falta al menos tres iteraciones para estimar el orden de convergencia.</p>");
   }
@@ -461,8 +314,7 @@ function renderConvergencia(d) {
     parrafos.push(`<p>Con un error relativo de ${numHTML(r.error_relativo, 6)} %, el criterio de Scarborough asegura ` +
       `al menos <b>${a.cifras_significativas} cifras significativas</b> correctas.</p>`);
   }
-  parrafos.push(`<p class="tenue">Como no se conoce la raíz exacta, el error se aproxima con la diferencia entre dos ` +
-    `aproximaciones consecutivas: eₙ ≈ |xₙ₊₁ − xₙ|.</p>`);
+  for (const t of a.advertencias) parrafos.push(`<p class="tenue">⚠ ${escapar(t)}</p>`);
   $("#texto-convergencia").innerHTML = parrafos.join("");
 }
 
@@ -561,7 +413,7 @@ function renderHistorial(lista) {
     return `<li data-id="${escapar(h.id)}">
       <div>
         <div class="historial-fx">f(x) = ${escapar(h.funcion)}</div>
-        <div class="historial-detalle">x₀ = ${escapar(h.x0)}, x₁ = ${escapar(h.x1)}, tol = ${escapar(h.tolerancia)} ·
+        <div class="historial-detalle">x₀ = ${escapar(h.x0)}, x₁ = ${escapar(h.x1)}, error = ${escapar(h.tolerancia)} ·
           ${h.raiz === null || !h.exitoso ? "sin raíz" : `raíz ≈ ${corto(h.raiz, 10)}`} · ${h.iteraciones} it. · ${escapar(h.fecha)}
           <span class="estado ${clase}" style="padding:1px 8px;font-size:.72rem;margin-left:4px">${(ESTADOS[h.estado] || ["", h.estado])[1]}</span></div>
       </div>
@@ -575,8 +427,7 @@ function renderHistorial(lista) {
 $("#lista-historial").addEventListener("click", async (e) => {
   const boton = e.target.closest("button[data-accion]");
   if (!boton) return;
-  const li = boton.closest("li");
-  const id = li.dataset.id;
+  const id = boton.closest("li").dataset.id;
   if (boton.dataset.accion === "borrar") {
     const r = await llamar("historial/borrar", { id });
     if (r.ok) renderHistorial(r.historial);
@@ -585,7 +436,7 @@ $("#lista-historial").addEventListener("click", async (e) => {
   const h = $("#lista-historial")._lista.find((x) => x.id === id);
   if (!h) return;
   cargarEnFormulario(h);
-  activarPestana("resultado");
+  activarPestana("resolver");
   await resolver();
 });
 
@@ -621,46 +472,7 @@ $$("[data-exportar]").forEach((b) => b.addEventListener("click", async () => {
 }));
 
 // ======================================================================
-//  Buscador de intervalos
-// ======================================================================
-
-$("#btn-buscar-abrir").addEventListener("click", () => {
-  const panel = $("#buscador");
-  panel.hidden = !panel.hidden;
-  if (!panel.hidden) $("#desde").focus();
-});
-
-$("#btn-buscar").addEventListener("click", async () => {
-  limpiarErrores();
-  const r = await llamar("buscar", { funcion: campo("funcion").value, desde: $("#desde").value, hasta: $("#hasta").value });
-  const ul = $("#lista-intervalos");
-  if (!r.ok) { mostrarErrores(r.errores); ul.innerHTML = ""; return; }
-  const items = r.intervalos.map((i) => i.exacta
-    ? `<li><button type="button" data-a="${i.a}" data-b="${i.a + 0.5}">x = ${corto(i.a, 8)} <span>es raíz exacta</span></button></li>`
-    : `<li><button type="button" data-a="${i.a}" data-b="${i.b}">[${corto(i.a, 6)}, ${corto(i.b, 6)}] <span>usar como x₀, x₁</span></button></li>`);
-  if (r.asintotas.length) {
-    items.push(`<li>Además hay ${r.asintotas.length} cambio(s) de signo por asíntotas (no son raíces), cerca de x ≈ ${r.asintotas.map((i) => corto((i.a + i.b) / 2, 4)).join(", ")}.</li>`);
-  }
-  ul.innerHTML = items.join("") || "<li>No se encontraron cambios de signo en ese rango. Probá con un rango más amplio.</li>";
-  if (!estado.datos && r.curva) {
-    lienzoPrincipal.fijarVista({ xmin: r.rango[0], xmax: r.rango[1], ymin: -5, ymax: 5 });
-    lienzoPrincipal.fijarCurva(campo("funcion").value, r.curva);
-    lienzoPrincipal.ajustarY();
-  }
-});
-
-$("#lista-intervalos").addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-a]");
-  if (!b) return;
-  campo("x0").value = paraCampo(parseFloat(b.dataset.a));
-  campo("x1").value = paraCampo(parseFloat(b.dataset.b));
-  limpiarErrores();
-  actualizarBolzanoVivo();
-  avisar("Valores iniciales cargados. Presioná Resolver.");
-});
-
-// ======================================================================
-//  Formulario y teclado matemático
+//  Formulario, criterio y teclado matemático
 // ======================================================================
 
 form.addEventListener("submit", (e) => {
@@ -669,26 +481,24 @@ form.addEventListener("submit", (e) => {
 });
 
 campo("funcion").addEventListener("input", demorar(analizarFuncion, 220));
-["x0", "x1"].forEach((id) => campo(id).addEventListener("input", () => {
-  if (estado.datos) invalidarResultado();
-  actualizarBolzanoVivo();
-}));
-["tolerancia", "max_iteraciones"].forEach((id) => campo(id).addEventListener("input", () => {
+["x0", "x1", "tolerancia"].forEach((id) => campo(id).addEventListener("input", () => {
   const c = $(`.campo[data-campo="${id}"]`);
   c.classList.remove("con-error");
   $(".error-campo", c).textContent = "";
+  if (estado.datos) invalidarResultado();
 }));
 
-function actualizarAyudaCriterio() {
-  $("#ayuda-criterio").textContent = AYUDA_CRITERIO[$("input[name=criterio]:checked").value];
-}
-$$("input[name=criterio]").forEach((r) => r.addEventListener("change", actualizarAyudaCriterio));
+// El criterio de parada se elige en la cabecera del cuadro del error.
+// Al cambiarlo se vuelve a resolver, porque cambia en qué iteración se detiene.
+campo("criterio").addEventListener("change", () => {
+  actualizarUnidadError();
+  if (estado.datos) resolver();
+});
 
-$("#decimales").addEventListener("input", (e) => {
+campo("decimales").addEventListener("change", (e) => {
   estado.decimales = parseInt(e.target.value, 10);
-  $("#decimales-valor").textContent = estado.decimales;
   if (estado.datos) {
-    renderResultado(estado.datos);
+    renderTablas(estado.datos);
     renderComparacion(estado.datos);
     pasos.decimales = estado.decimales;
     pasos._renderExplicacion();
@@ -716,23 +526,6 @@ $("#teclado").addEventListener("click", (e) => {
   input.dispatchEvent(new Event("input"));
 });
 
-// Ejemplos
-$("#lista-ejemplos").innerHTML = EJEMPLOS.map((ej, k) => `
-  <li><button type="button" data-ejemplo="${k}">
-    <span class="ejemplo-fx">${escapar(ej.funcion)}</span>
-    <span class="ejemplo-nota">${escapar(ej.nota)}</span>
-  </button></li>`).join("");
-
-$("#lista-ejemplos").addEventListener("click", async (e) => {
-  const b = e.target.closest("button[data-ejemplo]");
-  if (!b) return;
-  const ej = EJEMPLOS[+b.dataset.ejemplo];
-  invalidarResultado();
-  cargarEnFormulario({ ...ej, tolerancia: "0.0001", max_iteraciones: "50", criterio: "absoluto" });
-  await resolver();
-  if (window.innerWidth < 900) $(".area").scrollIntoView({ behavior: "smooth" });
-});
-
 // Atajos del paso a paso
 document.addEventListener("keydown", (e) => {
   if (pestanaActiva() !== "pasos" || !estado.datos) return;
@@ -742,7 +535,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft" && !e.target.closest("[role=tablist]")) { e.preventDefault(); pasos.retroceder(); }
 });
 
-// Fila de la tabla -> animación de esa iteración
+// Fila de la tabla -> esa iteración paso a paso
 $("#tabla-iteraciones tbody").addEventListener("click", (e) => {
   const fila = e.target.closest("tr[data-i]");
   if (!fila) return;
@@ -762,14 +555,11 @@ $("#btn-tema").addEventListener("click", () => {
     : window.matchMedia("(prefers-color-scheme: dark)").matches;
   raiz.dataset.theme = oscuroAhora ? "light" : "dark";
   try { localStorage.setItem("tema", raiz.dataset.theme); } catch (err) { /* sin almacenamiento */ }
-  lienzoPrincipal.dibujar();
   lienzoPasos.dibujar();
   redibujarTodos();
-  if (estado.datos) renderComparacion(estado.datos);
 });
 
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  lienzoPrincipal.dibujar();
   lienzoPasos.dibujar();
   redibujarTodos();
 });
@@ -785,7 +575,6 @@ $("#btn-salir").addEventListener("click", async () => {
 //  Inicio
 // ======================================================================
 
-actualizarAyudaCriterio();
 cargarHistorial();
 cargarEnFormulario({ funcion: "x^3 - 4x - 1", x0: "1", x1: "2" });
-document.fonts?.ready.then(() => { lienzoPrincipal.dibujar(); redibujarTodos(); });
+document.fonts?.ready.then(() => redibujarTodos());
