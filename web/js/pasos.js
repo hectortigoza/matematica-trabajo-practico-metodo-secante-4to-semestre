@@ -1,6 +1,6 @@
 // pasos.js — Paso a paso: la resolución de la tabla como la haría una persona.
 //
-// Primero se verifica el cambio de signo (acheck, bcheck).
+// Primero se verifica el cambio de signo: f(a) y f(b), ¿positivo o negativo?
 // Después, en cada iteración k (empieza en 0):
 //   0. Cargar a y b
 //   1. Calcular f(a)            fórmula → reemplazo → resultado
@@ -23,6 +23,7 @@ const xk1 = (k) => `<i>x</i><sub>${k + 1}</sub>`;          // x(k+1) con su núm
 const frac = (a, b) => `<span class="m-frac"><span class="m-num-frac">${a}</span><span class="m-den">${b}</span></span>`;
 const chip = (contenido, color) => `<span class="chip c-${color}">${contenido}</span>`;
 const sim = (contenido, color) => `<span class="sim c-${color}">${contenido}</span>`;
+const signo = (valor) => (valor > 0 ? "positivo" : valor < 0 ? "negativo" : "cero");
 
 const COLUMNAS_TABLA = ["k", "a", "b", "fa", "fb", "x"];
 const COLUMNAS_TEST = ["k", "fx", "cmp"];
@@ -238,11 +239,11 @@ export class PasoAPaso {
 
     if (paso.tipo === "signo") {
       titulo = "¿Hay cambio de signo entre a y b?";
-      cuerpo = bloque("acheck", `${FA} = ${chip(v(r.fa), "c")} &nbsp;→&nbsp; ¿f(a) &gt; 0? &nbsp;→&nbsp; acheck = <b>${r.acheck ? "verdadero" : "falso"}</b>`) +
-        bloque("bcheck", `${FB} = ${chip(v(r.fb), "d")} &nbsp;→&nbsp; ¿f(b) &gt; 0? &nbsp;→&nbsp; bcheck = <b>${r.bcheck ? "verdadero" : "falso"}</b>`) +
-        bloque("Resultado", r.acheck !== r.bcheck
-          ? `<span class="resultado-paso">acheck ≠ bcheck → sí hay cambio de signo, se resuelve</span>`
-          : `<span class="resultado-paso">acheck = bcheck → no hay cambio de signo</span>`, `resultado ${r.acheck !== r.bcheck ? "cumple" : ""}`);
+      cuerpo = bloque("a", `${A} = ${chip(c(r.a), "a")} &nbsp;→&nbsp; ${FA} = ${this._sustituir(r.a, "a")} = ${chip(v(r.fa), "c")} &nbsp;→&nbsp; <b>${signo(r.fa)}</b>`) +
+        bloque("b", `${B} = ${chip(c(r.b), "b")} &nbsp;→&nbsp; ${FB} = ${this._sustituir(r.b, "b")} = ${chip(v(r.fb), "d")} &nbsp;→&nbsp; <b>${signo(r.fb)}</b>`) +
+        bloque("Resultado", r.cambio_de_signo
+          ? `<span class="resultado-paso">f(a) es ${signo(r.fa)} y f(b) es ${signo(r.fb)} → hay cambio de signo, se resuelve</span>`
+          : `<span class="resultado-paso">f(a) y f(b) son los dos ${signo(r.fa)}s → no hay cambio de signo</span>`, `resultado ${r.cambio_de_signo ? "cumple" : ""}`);
       nota = `a = ${c(r.a)}, b = ${c(r.b)}, error pedido = ${r.error}.`;
     } else if (paso.tipo === "final") {
       titulo = r.encontrada ? "Resultado" : "El método se detuvo";

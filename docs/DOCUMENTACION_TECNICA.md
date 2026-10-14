@@ -196,7 +196,7 @@ MATEMATICA/
 
 | Pestaña | Contenido |
 |---|---|
-| **Resolver** | Ecuación, a, b y error. Al resolver: el cambio de signo (acheck, bcheck), la **tabla** (k, a, b, f(a), f(b), x<sub>k+1</sub>) y al lado el **test de parada** (f(x<sub>k+1</sub>) y la comparación con el error). |
+| **Resolver** | Ecuación, a, b y error. Al resolver: el cambio de signo (a → f(a) → positivo o negativo, y lo mismo con b), la **tabla** (k, a, b, f(a), f(b), x<sub>k+1</sub>) y al lado el **test de parada** (f(x<sub>k+1</sub>) y la comparación con el error). |
 | **Paso a paso** | La resolución de la tabla como la haría una persona: en cada iteración, la fórmula, el reemplazo y el resultado de f(a), f(b), x<sub>k+1</sub> y del test, con las celdas que se usan pintadas de colores. |
 | **Animación** | El método sobre la gráfica: la secante, su corte con el eje x y el test de cada iteración. |
 | **Convergencia** | Gráfico de |f(x<sub>k+1</sub>)| por iteración y orden de convergencia estimado. |
@@ -263,7 +263,7 @@ while not encontrada and k < LIMITE_DE_ITERACIONES:
 | Intervalo incorrecto | a = b | "a y b tienen que ser distintos." |
 | Error inválido | 0 o −1 | "El error debe ser un número mayor que 0 (ej.: 0.0001)." |
 | Fuera del dominio | ln(x) con a = −1 | "La función no se puede calcular en a o en b (fuera de su dominio)." |
-| Sin cambio de signo | a = 1, b = 2 en x³ − 4x − 1 | "acheck = bcheck → no hay cambio de signo: no se resuelve la tabla." |
+| Sin cambio de signo | a = 1, b = 2 en x³ − 4x − 1 | "f(a) y f(b) son los dos negativos → no hay cambio de signo: no se resuelve la tabla." |
 | División por cero | f(a) = f(b) | "f(a) y f(b) son iguales: no se puede dividir por cero." |
 | No converge | — | "Después de 100 iteraciones no se llegó al error pedido: el método no converge." |
 | Asíntota | 1/x en [−1, 2] | "Ojo: la raíz encontrada está fuera de [a, b]…" |

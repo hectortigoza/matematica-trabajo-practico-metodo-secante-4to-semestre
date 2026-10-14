@@ -218,20 +218,21 @@ function renderizarTodo() {
   if (pestanaActiva() === "animacion") iniciarAnimacion();
 }
 
-/** acheck = f(a) > 0, bcheck = f(b) > 0. Si son iguales, no hay cambio de signo. */
+/** f(a) y f(b): ¿positivo o negativo? Si tienen el mismo signo, no hay cambio de signo. */
 function renderCambioSigno(r) {
   const dec = estado.decimales;
   const caja = $("#cambio-signo");
-  const si = (v) => (v ? "verdadero" : "falso");
+  const signo = (v) => (v > 0 ? "positivo" : v < 0 ? "negativo" : "cero");
+  const reemplazo = (v) => funcionHTML(r.funcion).split("<i>x</i>").join(`(${num(v, dec)})`);
   caja.hidden = false;
   caja.className = `hoja cambio-signo ${r.cambio_de_signo ? "hay" : "alerta"}`;
   caja.innerHTML = `
     <h2>¿Hay cambio de signo entre <i>a</i> y <i>b</i>?</h2>
-    <p class="formula-signo">f(a) = f(${num(r.a, dec)}) = ${numHTML(r.fa, dec)} &nbsp;→&nbsp; acheck = f(a) &gt; 0 = <b>${si(r.acheck)}</b></p>
-    <p class="formula-signo">f(b) = f(${num(r.b, dec)}) = ${numHTML(r.fb, dec)} &nbsp;→&nbsp; bcheck = f(b) &gt; 0 = <b>${si(r.bcheck)}</b></p>
+    <p class="formula-signo">a = ${num(r.a, dec)} &nbsp;→&nbsp; f(a) = ${reemplazo(r.a)} = ${numHTML(r.fa, dec)} &nbsp;→&nbsp; <b>${signo(r.fa)}</b></p>
+    <p class="formula-signo">b = ${num(r.b, dec)} &nbsp;→&nbsp; f(b) = ${reemplazo(r.b)} = ${numHTML(r.fb, dec)} &nbsp;→&nbsp; <b>${signo(r.fb)}</b></p>
     <p class="veredicto-signo">${r.cambio_de_signo
-      ? "acheck ≠ bcheck → sí hay cambio de signo: se resuelve la tabla."
-      : "acheck = bcheck → no hay cambio de signo: no se resuelve la tabla."}</p>
+      ? `f(a) es ${signo(r.fa)} y f(b) es ${signo(r.fb)} → sí hay cambio de signo: se resuelve la tabla.`
+      : `f(a) y f(b) son los dos ${signo(r.fa)}s → no hay cambio de signo: no se resuelve la tabla.`}</p>
     ${r.cambio_de_signo ? "" : `<p class="tenue">Elegí valores de a y b donde f(x) tenga signos opuestos.</p>`}`;
 }
 
@@ -511,7 +512,7 @@ $$("[data-exportar]").forEach((b) => b.addEventListener("click", () => {
     th{background:#eef5f1}td:first-child{text-align:center}.raiz{font-size:20px}</style></head><body>
     <h1>Método de la Secante</h1>
     <p><b>f(x)</b> = ${funcionHTML(r.funcion)} &nbsp; <b>a</b> = ${r.a} &nbsp; <b>b</b> = ${r.b} &nbsp; <b>error</b> = ${r.error}</p>
-    <p><b>Cambio de signo:</b> f(a) = ${v(r.fa)} (acheck = ${r.acheck ? "verdadero" : "falso"}), f(b) = ${v(r.fb)} (bcheck = ${r.bcheck ? "verdadero" : "falso"}) → ${r.cambio_de_signo ? "sí hay cambio de signo" : "no hay cambio de signo"}.</p>
+    <p><b>Cambio de signo:</b> f(a) = ${v(r.fa)} (${r.fa > 0 ? "positivo" : "negativo"}), f(b) = ${v(r.fb)} (${r.fb > 0 ? "positivo" : "negativo"}) → ${r.cambio_de_signo ? "sí hay cambio de signo" : "no hay cambio de signo"}.</p>
     <p><b>Fórmula:</b> x<sub>k+1</sub> = (a·f(b) − b·f(a)) / (f(b) − f(a)) &nbsp;&nbsp; <b>Test de parada:</b> |f(x<sub>k+1</sub>)| &lt; error</p>
     <table><tr><th>k</th><th>a</th><th>b</th><th>f(a)</th><th>f(b)</th><th>x<sub>k+1</sub></th><th>f(x<sub>k+1</sub>)</th><th>¿&lt; error?</th></tr>${filas}</table>
     <p class="raiz">${r.encontrada ? `<b>Raíz ≈ ${v(r.raiz)}</b>` : ""}</p><p>${escapar(r.mensaje)}</p>
