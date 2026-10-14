@@ -20,7 +20,7 @@ Se abre el navegador con la interfaz. Para cerrar el programa, usá el botón **
 
 ## Qué incluye
 
-**Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
+**Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver se verifica si **hay cambio de signo** entre x₀ y x₁ (f(x₀)·f(x₁) < 0, teorema de Bolzano) y aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
 
 - **Método de la secante** que itera hasta alcanzar el error pedido, con tres criterios de parada elegibles desde la cabecera del cuadro del error (|xₙ₊₁ − xₙ|, relativo % y |f(xₙ₊₁)|), y detección de división por cero, divergencia y salida del dominio.
 - **Paso a paso de la tabla**: arranca con los valores iniciales y, celda por celda, muestra la fórmula, el reemplazo y el resultado de f(xₙ₋₁), f(xₙ), xₙ₊₁ y del error, y la comparación con el error pedido. Las celdas que se usan se pintan de colores.

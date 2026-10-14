@@ -281,6 +281,9 @@ function renderTablas(d) {
     </tr>`;
   }).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
 
+  // ---- Cambio de signo entre x₀ y x₁ (teorema de Bolzano)
+  renderCambioSigno(d);
+
   // ---- Resultado final
   const [clase, texto] = ESTADOS[r.estado] || ["alerta", r.estado];
   const final = $("#resultado-final");
@@ -295,6 +298,37 @@ function renderTablas(d) {
       <span class="estado ${clase}">${texto}</span>
       <p class="tenue">${escapar(r.mensaje)}</p>`;
   }
+}
+
+/**
+ * ¿Hay cambio de signo entre x₀ y x₁? Si f(x₀)·f(x₁) < 0 y f es continua,
+ * por el teorema de Bolzano hay al menos una raíz entre ellos.
+ * La secante no lo exige (es un método abierto), pero se informa.
+ */
+function renderCambioSigno(d) {
+  const r = d.resultado;
+  const v = d.verificacion;
+  const dec = estado.decimales;
+  const caja = $("#cambio-signo");
+  const par = (x) => (x < 0 ? `(${numHTML(x, dec)})` : numHTML(x, dec));
+
+  if (r.f_x0 === null || r.f_x1 === null || r.f_x0 === undefined || r.f_x1 === undefined) {
+    caja.className = "hoja cambio-signo alerta";
+    caja.innerHTML = `<h2>Cambio de signo</h2><p>${escapar(r.mensaje)}</p>`;
+    return;
+  }
+
+  const producto = r.f_x0 * r.f_x1;
+  const signo = producto < 0 ? "&lt; 0" : producto > 0 ? "&gt; 0" : "= 0";
+  caja.className = `hoja cambio-signo ${v.cumple ? "hay" : "alerta"}`;
+  caja.innerHTML = `
+    <h2>¿Hay cambio de signo entre <i>x</i>₀ y <i>x</i>₁?</h2>
+    <p class="formula-signo">
+      <i>f</i>(<i>x</i>₀) · <i>f</i>(<i>x</i>₁) = ${par(r.f_x0)} · ${par(r.f_x1)} = <b>${numHTML(producto, dec)} ${signo}</b>
+    </p>
+    <p class="veredicto-signo">${v.cumple ? "Sí hay cambio de signo" : "No hay cambio de signo"}</p>
+    <p class="tenue">${escapar(v.mensaje)}</p>
+    ${v.detalle.length ? `<ul class="tenue">${v.detalle.map((t) => `<li>${escapar(t)}</li>`).join("")}</ul>` : ""}`;
 }
 
 function errorNombre(criterioActual) {
@@ -528,7 +562,7 @@ campo("criterio").addEventListener("change", () => {
 campo("decimales").addEventListener("change", (e) => {
   estado.decimales = parseInt(e.target.value, 10);
   if (estado.datos) {
-    renderTablas(estado.datos);
+    renderTablas(estado.datos);   // incluye el cambio de signo
     renderComparacion(estado.datos);
     pasos.actualizarDecimales(estado.decimales);
     animacion.decimales = estado.decimales;

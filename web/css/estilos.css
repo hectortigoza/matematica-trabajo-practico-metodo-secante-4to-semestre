@@ -1127,6 +1127,15 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
   .explicacion-anim { position: static; }
 }
 
+/* Cambio de signo (Bolzano) en la página Resolver */
+.cambio-signo { margin-bottom: 16px; border-left: 4px solid var(--verde); }
+.cambio-signo.alerta { border-left-color: var(--ocre); }
+.cambio-signo h2 { font-size: 1.15rem; margin-bottom: 6px; }
+.cambio-signo p, .cambio-signo ul { margin: 4px 0 0; }
+.formula-signo { font-family: var(--fuente-mat); font-size: 1.3rem; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.veredicto-signo { font-weight: 700; color: var(--verde); }
+.cambio-signo.alerta .veredicto-signo { color: var(--ocre); }
+
 /* --------------------------------------------------------------------------
    Responsivo
    -------------------------------------------------------------------------- */
