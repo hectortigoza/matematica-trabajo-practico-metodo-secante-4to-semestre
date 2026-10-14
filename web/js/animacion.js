@@ -5,7 +5,7 @@
 //   1. Trazar la recta secante que pasa por ellos
 //   2. Encontrar dónde la secante corta al eje x  ->  xₙ₊₁
 //   3. Evaluar f(xₙ₊₁)  (subir/bajar hasta la curva)
-//   4. Calcular el error y decidir si seguir o parar
+//   4. Test de parada: |f(xₙ₊₁)| < error  ->  seguir o parar
 //
 // Todos los números vienen calculados desde Python; acá solo se dibujan.
 
@@ -274,10 +274,10 @@ export class Animacion {
           </div></div>
         </li>
         <li class="subpaso">
-          <div class="subpaso-titulo">Calcular el error y decidir</div>
+          <div class="subpaso-titulo">Test de parada</div>
           <div class="subpaso-cuerpo"><div>
-            <div class="formula-paso">E<sub>a</sub> = |${xS} − ${xN}| = <span class="resultado-paso">${numHTML(it.error_absoluto, d)}</span></div>
-            <div class="formula-paso">ε<sub>a</sub> = ${frac(`|${xS} − ${xN}|`, `|${xS}|`)} · 100 = <span class="resultado-paso">${it.error_relativo === null ? "—" : numHTML(it.error_relativo, d)} %</span></div>
+            <p>Se reemplaza ${xS} en la función y se compara con el error pedido.</p>
+            <div class="formula-paso">|f(${xS})| = <span class="resultado-paso">${numHTML(Math.abs(it.f_siguiente), d)}</span></div>
             <div class="final-iteracion" hidden>${decision}</div>
           </div></div>
         </li>

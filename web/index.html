@@ -77,17 +77,17 @@
 
         <div class="datos-valores">
           <div class="campo" data-campo="x0">
-            <label for="x0">Valor inicial <i>x</i>₀</label>
+            <label for="x0">Valor inicial <i>a</i></label>
             <input id="x0" name="x0" type="text" inputmode="decimal" placeholder="1">
             <p class="error-campo" role="alert"></p>
           </div>
           <div class="campo" data-campo="x1">
-            <label for="x1">Valor inicial <i>x</i>₁</label>
+            <label for="x1">Valor inicial <i>b</i></label>
             <input id="x1" name="x1" type="text" inputmode="decimal" placeholder="2">
             <p class="error-campo" role="alert"></p>
           </div>
           <div class="campo" data-campo="tolerancia">
-            <label for="tolerancia">Error <span id="unidad-error"></span></label>
+            <label for="tolerancia">Error</label>
             <input id="tolerancia" name="tolerancia" type="text" inputmode="decimal" value="0.0001">
             <p class="error-campo" role="alert"></p>
           </div>
@@ -115,9 +115,9 @@
             <div class="tabla-contenedor">
               <table class="tabla tabla-alineada" id="tabla-iteraciones">
                 <thead><tr>
-                  <th>n</th><th><i>x</i><sub>n−1</sub></th><th><i>x</i><sub>n</sub></th>
-                  <th><i>f</i>(<i>x</i><sub>n−1</sub>)</th><th><i>f</i>(<i>x</i><sub>n</sub>)</th>
-                  <th><i>x</i><sub>n+1</sub></th>
+                  <th>k</th><th><i>a</i></th><th><i>b</i></th>
+                  <th><i>f</i>(<i>a</i>)</th><th><i>f</i>(<i>b</i>)</th>
+                  <th><i>x</i><sub>k+1</sub></th>
                 </tr></thead>
                 <tbody></tbody>
               </table>
@@ -126,21 +126,14 @@
 
           <div class="hoja cuadro cuadro-error">
             <div class="cuadro-cabecera">
-              <h2>Comparativa del error</h2>
+              <h2>Test de parada</h2>
             </div>
             <div class="tabla-contenedor">
               <table class="tabla tabla-alineada" id="tabla-error">
                 <thead><tr>
-                  <th>n</th>
-                  <th>
-                    <label class="sr-only" for="criterio">Criterio de parada</label>
-                    <select id="criterio" class="selector-criterio" title="Elegí el criterio de parada">
-                      <option value="absoluto">|xₙ₊₁ − xₙ|</option>
-                      <option value="relativo">|xₙ₊₁ − xₙ| / |xₙ₊₁| · 100 %</option>
-                      <option value="residuo">|f(xₙ₊₁)|</option>
-                    </select>
-                  </th>
-                  <th>Comparación con el error pedido</th>
+                  <th>k</th>
+                  <th><i>f</i>(<i>x</i><sub>k+1</sub>)</th>
+                  <th>¿|<i>f</i>(<i>x</i><sub>k+1</sub>)| &lt; error?</th>
                 </tr></thead>
                 <tbody></tbody>
               </table>
@@ -196,19 +189,19 @@
             <div class="tabla-contenedor">
               <table class="tabla tabla-alineada tabla-pasos" id="pasos-tabla">
                 <thead><tr>
-                  <th>n</th><th><i>x</i><sub>n−1</sub></th><th><i>x</i><sub>n</sub></th>
-                  <th><i>f</i>(<i>x</i><sub>n−1</sub>)</th><th><i>f</i>(<i>x</i><sub>n</sub>)</th>
-                  <th><i>x</i><sub>n+1</sub></th>
+                  <th>k</th><th><i>a</i></th><th><i>b</i></th>
+                  <th><i>f</i>(<i>a</i>)</th><th><i>f</i>(<i>b</i>)</th>
+                  <th><i>x</i><sub>k+1</sub></th>
                 </tr></thead>
                 <tbody></tbody>
               </table>
             </div>
           </div>
           <div class="hoja cuadro cuadro-error">
-            <div class="cuadro-cabecera"><h2>Comparativa del error</h2></div>
+            <div class="cuadro-cabecera"><h2>Test de parada</h2></div>
             <div class="tabla-contenedor">
               <table class="tabla tabla-alineada tabla-pasos" id="pasos-error">
-                <thead><tr><th>n</th><th id="pasos-error-titulo">Error</th><th>Comparación</th></tr></thead>
+                <thead><tr><th>k</th><th><i>f</i>(<i>x</i><sub>k+1</sub>)</th><th>Comparación</th></tr></thead>
                 <tbody></tbody>
               </table>
             </div>
@@ -268,13 +261,13 @@
       <div data-con-datos hidden>
         <div class="dos-columnas">
           <div class="hoja">
-            <h2>Error aproximado por iteración</h2>
-            <p class="tenue">Escala logarítmica: cada línea de la grilla es 10 veces más chica que la anterior.</p>
+            <h2>Test de parada por iteración</h2>
+            <p class="tenue">|f(x<sub>k+1</sub>)| en cada iteración, en escala logarítmica (cada línea es 10 veces más chica). Cuando baja del error pedido, se detiene.</p>
             <div class="grafico-lineas"><canvas id="canvas-error"></canvas></div>
           </div>
           <div class="hoja">
             <h2>Orden de convergencia estimado</h2>
-            <p class="tenue">p ≈ ln(e<sub>n+1</sub>/e<sub>n</sub>) / ln(e<sub>n</sub>/e<sub>n−1</sub>). Para la secante, la teoría dice φ ≈ 1.618. Las primeras estimaciones, lejos de la raíz, son poco confiables.</p>
+            <p class="tenue">p ≈ ln(e<sub>k+1</sub>/e<sub>k</sub>) / ln(e<sub>k</sub>/e<sub>k−1</sub>), con e<sub>k</sub> = |x<sub>k+1</sub> − b|. Para la secante, la teoría dice φ ≈ 1.618. Las primeras estimaciones, lejos de la raíz, son poco confiables.</p>
             <div class="grafico-lineas"><canvas id="canvas-orden"></canvas></div>
           </div>
         </div>
@@ -291,7 +284,7 @@
       <div data-con-datos hidden>
         <div class="hoja">
           <h2>Mismo problema, cuatro métodos</h2>
-          <p class="tenue">Misma tolerancia y mismo criterio de parada. Los métodos cerrados usan [x₀, x₁] como intervalo; Newton-Raphson parte de x₁.</p>
+          <p class="tenue">Mismo error pedido y mismo test de parada |f(x)| &lt; error. Bisección y falsa posición usan [a, b]; Newton-Raphson parte de b.</p>
           <div class="tabla-contenedor">
             <table class="tabla tabla-comparacion" id="tabla-comparacion">
               <thead><tr><th>Método</th><th>Fórmula</th><th>Iteraciones</th><th>Raíz</th><th>Estado</th></tr></thead>
@@ -317,65 +310,59 @@
     <section class="vista" id="vista-teoria" role="tabpanel" aria-labelledby="tab-teoria" hidden>
       <article class="hoja teoria prosa">
         <h2>El método de la secante</h2>
-        <p>Busca un valor <i>r</i> tal que <i>f</i>(<i>r</i>) = 0. En lugar de usar la recta tangente, como Newton-Raphson, usa la recta <b>secante</b>, que pasa por los dos últimos puntos calculados de la curva. Donde esa recta corta al eje <i>x</i> está la siguiente aproximación.</p>
+        <p>Busca un valor <i>x</i> tal que <i>f</i>(<i>x</i>) = 0. Parte de dos valores, <i>a</i> y <i>b</i>, traza la recta (secante) que pasa por (<i>a</i>, <i>f</i>(<i>a</i>)) y (<i>b</i>, <i>f</i>(<i>b</i>)) y toma como nuevo valor el punto donde esa recta corta al eje <i>x</i>.</p>
 
-        <h3>De dónde sale la fórmula</h3>
-        <p>La recta que pasa por (<i>x</i><sub>n−1</sub>, <i>f</i>(<i>x</i><sub>n−1</sub>)) y (<i>x</i><sub>n</sub>, <i>f</i>(<i>x</i><sub>n</sub>)) es</p>
-        <p class="formula-bloque"><i>y</i> = <i>f</i>(<i>x</i><sub>n</sub>) + <span class="m-frac"><span class="m-num-frac"><i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>)</span><span class="m-den"><i>x</i><sub>n</sub> − <i>x</i><sub>n−1</sub></span></span> · (<i>x</i> − <i>x</i><sub>n</sub>)</p>
-        <p>Haciendo <i>y</i> = 0 y despejando <i>x</i> se obtiene</p>
-        <p class="formula-bloque formula-destacada"><i>x</i><sub>n+1</sub> = <i>x</i><sub>n</sub> − <span class="m-frac"><span class="m-num-frac"><i>f</i>(<i>x</i><sub>n</sub>) · (<i>x</i><sub>n</sub> − <i>x</i><sub>n−1</sub>)</span><span class="m-den"><i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>)</span></span></p>
-        <p>Es la fórmula de Newton-Raphson, <i>x</i><sub>n+1</sub> = <i>x</i><sub>n</sub> − <i>f</i>(<i>x</i><sub>n</sub>)/<i>f</i>′(<i>x</i><sub>n</sub>), con la derivada reemplazada por la pendiente de la secante. Por eso <b>no hace falta conocer la derivada</b>.</p>
-
-        <h3>Algoritmo</h3>
-<pre class="pseudocodigo">Entrada: f, x₀, x₁, tolerancia, máximo de iteraciones
-para n = 1, 2, …, máximo:
-    si f(x₁) = f(x₀):  detener (la secante es horizontal)
-    x₂ ← x₁ − f(x₁)·(x₁ − x₀) / (f(x₁) − f(x₀))
-    Eₐ ← |x₂ − x₁|          εₐ ← |Eₐ / x₂| · 100 %
-    si el error elegido < tolerancia:  devolver x₂
-    x₀ ← x₁ ,  x₁ ← x₂      (se descarta el punto más viejo)
-informar que no se alcanzó la tolerancia</pre>
-
-        <h3>Condiciones de aplicación</h3>
+        <h3>Notación</h3>
         <ul>
-          <li><i>f</i> debe ser continua (idealmente derivable) cerca de la raíz.</li>
-          <li>Se necesitan dos valores iniciales distintos. <b>No</b> hace falta que encierren la raíz: <i>f</i>(<i>x</i>₀) y <i>f</i>(<i>x</i>₁) pueden tener el mismo signo.</li>
-          <li>Conviene que los valores iniciales estén cerca de la raíz. Si <i>f</i>(<i>x</i>₀)·<i>f</i>(<i>x</i>₁) &lt; 0, el teorema de Bolzano garantiza una raíz entre ambos.</li>
+          <li><i>k</i>: número de iteración, empieza en 0.</li>
+          <li><i>a</i> = <i>x</i><sub>k−1</sub> (valor anterior) y <i>b</i> = <i>x</i><sub>k</sub> (valor actual).</li>
+          <li><i>x</i><sub>k+1</sub>: el valor nuevo que da la fórmula.</li>
         </ul>
 
-        <h3>Criterio de convergencia</h3>
-        <p>Si <i>f</i>′(<i>r</i>) ≠ 0, <i>f</i>″ es continua y los valores iniciales están suficientemente cerca de <i>r</i>, el método converge con orden</p>
-        <p class="formula-bloque">p = φ = <span class="m-frac"><span class="m-num-frac">1 + √5</span><span class="m-den">2</span></span> ≈ 1.618 &nbsp;&nbsp; es decir &nbsp;&nbsp; |e<sub>n+1</sub>| ≈ C · |e<sub>n</sub>|<sup>1.618</sup></p>
-        <p>Es <b>superlineal</b>: más rápida que bisección (lineal, p = 1) y algo más lenta que Newton (cuadrática, p = 2). En la práctica, la cantidad de cifras correctas se multiplica por ≈ 1.6 en cada iteración.</p>
+        <h3>Antes de empezar: ¿hay cambio de signo?</h3>
+        <p>Se calcula <i>f</i>(<i>a</i>) y <i>f</i>(<i>b</i>). acheck = ¿<i>f</i>(<i>a</i>) &gt; 0? y bcheck = ¿<i>f</i>(<i>b</i>) &gt; 0?. Si acheck y bcheck son iguales, los dos tienen el mismo signo: <b>no hay cambio de signo</b> y no se resuelve. Si son distintos, por el teorema de Bolzano hay una raíz entre <i>a</i> y <i>b</i>.</p>
 
-        <h3>Criterio de parada y error</h3>
-        <ul>
-          <li><b>Error absoluto:</b> E<sub>a</sub> = |<i>x</i><sub>n+1</sub> − <i>x</i><sub>n</sub>| &lt; tolerancia.</li>
-          <li><b>Error relativo porcentual:</b> ε<sub>a</sub> = |(<i>x</i><sub>n+1</sub> − <i>x</i><sub>n</sub>) / <i>x</i><sub>n+1</sub>| · 100 % &lt; tolerancia.</li>
-          <li><b>Residuo:</b> |<i>f</i>(<i>x</i><sub>n+1</sub>)| &lt; tolerancia.</li>
-          <li>Siempre se fija un <b>máximo de iteraciones</b> para no iterar sin fin si el método no converge.</li>
-          <li>Criterio de Scarborough: si ε<sub>a</sub> &lt; 0.5·10<sup>2−n</sup> %, el resultado tiene al menos <i>n</i> cifras significativas correctas.</li>
-        </ul>
+        <h3>Fórmula</h3>
+        <p class="formula-bloque formula-destacada"><i>x</i><sub>k+1</sub> = <span class="m-frac"><span class="m-num-frac"><i>a</i> · <i>f</i>(<i>b</i>) − <i>b</i> · <i>f</i>(<i>a</i>)</span><span class="m-den"><i>f</i>(<i>b</i>) − <i>f</i>(<i>a</i>)</span></span></p>
+        <p>Es la misma fórmula que <i>x</i><sub>k+1</sub> = <i>b</i> − <i>f</i>(<i>b</i>)·(<i>b</i> − <i>a</i>) / (<i>f</i>(<i>b</i>) − <i>f</i>(<i>a</i>)): sale de igualar a cero la recta que pasa por los dos puntos.</p>
+
+        <h3>Test de parada</h3>
+        <p>Se reemplaza <i>x</i><sub>k+1</sub> en la función. Si |<i>f</i>(<i>x</i><sub>k+1</sub>)| &lt; error, <i>x</i><sub>k+1</sub> es la respuesta. Si no, se pasa a la iteración siguiente con <b><i>a</i> ← <i>b</i></b> y <b><i>b</i> ← <i>x</i><sub>k+1</sub></b>.</p>
+
+        <h3>Algoritmo (como en PSeInt)</h3>
+<pre class="pseudocodigo">Leer f, a, b, error
+acheck ← f(a) &gt; 0
+bcheck ← f(b) &gt; 0
+Si acheck = bcheck Entonces
+    Escribir "No hay cambio de signo"
+SiNo
+    k ← 0
+    encontrada ← Falso
+    Mientras no encontrada Hacer
+        x ← (a·f(b) − b·f(a)) / (f(b) − f(a))
+        Si |f(x)| &lt; error Entonces
+            encontrada ← Verdadero
+        FinSi
+        a ← b
+        b ← x
+        k ← k + 1
+    FinMientras
+    Escribir "Raíz: ", x
+FinSi</pre>
 
         <h3>Ventajas</h3>
         <ul>
-          <li>No necesita la derivada, lo que sirve cuando <i>f</i>′ es difícil o imposible de calcular.</li>
-          <li>Converge rápido (orden ≈ 1.618), mucho más que bisección y falsa posición.</li>
-          <li>Hace una sola evaluación nueva de <i>f</i> por iteración (Newton necesita <i>f</i> y <i>f</i>′).</li>
-          <li>No exige un intervalo con cambio de signo.</li>
+          <li>No necesita la derivada (Newton-Raphson sí).</li>
+          <li>Converge rápido: en cada iteración las cifras correctas se multiplican por ≈ 1.6.</li>
+          <li>Calcula una sola vez la función por iteración.</li>
         </ul>
 
         <h3>Limitaciones</h3>
         <ul>
-          <li>No garantiza la convergencia: puede diverger si los valores iniciales están lejos de la raíz.</li>
-          <li>Si <i>f</i>(<i>x</i><sub>n</sub>) = <i>f</i>(<i>x</i><sub>n−1</sub>) hay división por cero (secante horizontal).</li>
-          <li>Como no encierra la raíz, puede “saltar” a otra raíz o salir del dominio de la función.</li>
-          <li>En raíces múltiples (<i>f</i>′(<i>r</i>) = 0) la convergencia se vuelve lineal.</li>
-          <li>Cerca de la raíz, <i>f</i>(<i>x</i><sub>n</sub>) − <i>f</i>(<i>x</i><sub>n−1</sub>) resta números muy parecidos, lo que produce error de cancelación.</li>
+          <li>Si f(a) = f(b) la fórmula divide por cero.</li>
+          <li>Puede no converger si a y b están lejos de la raíz.</li>
+          <li>Si la función tiene una asíntota entre a y b, el cambio de signo engaña: no es una raíz.</li>
         </ul>
-
-        <h3>Secante y falsa posición</h3>
-        <p>Usan la misma fórmula. La diferencia es qué punto se descarta. La secante descarta siempre el más viejo, mientras que la falsa posición conserva el extremo que mantiene el cambio de signo. Por eso la falsa posición siempre converge pero suele ser más lenta, y la secante es más rápida pero puede fallar.</p>
       </article>
     </section>
 

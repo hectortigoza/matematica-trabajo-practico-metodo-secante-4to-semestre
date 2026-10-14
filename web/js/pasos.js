@@ -1,41 +1,36 @@
-// pasos.js — Paso a paso: la resolución de la tabla, celda por celda.
+// pasos.js — Paso a paso: la resolución de la tabla como la haría una persona.
 //
-// Cada iteración se recorre en 6 pasos y cada paso carga una celda:
-//   0. Cargar xₙ₋₁ y xₙ (en la primera fila, los valores iniciales x₀ y x₁)
-//   1. Calcular f(xₙ₋₁)          fórmula → reemplazo → resultado
-//   2. Calcular f(xₙ)            fórmula → reemplazo → resultado
-//   3. Calcular xₙ₊₁ (secante)   fórmula → reemplazo → resultado
-//   4. Calcular el error         fórmula → reemplazo → resultado
-//   5. Comparar con el error pedido → seguir o detenerse
+// Primero se verifica el cambio de signo (acheck, bcheck).
+// Después, en cada iteración k (empieza en 0):
+//   0. Cargar a y b
+//   1. Calcular f(a)            fórmula → reemplazo → resultado
+//   2. Calcular f(b)            fórmula → reemplazo → resultado
+//   3. Calcular x(k+1)          fórmula → reemplazo → resultado
+//   4. Test de parada f(x(k+1)) fórmula → reemplazo → resultado
+//   5. Comparar |f(x(k+1))| con el error pedido → seguir o parar
 //
-// En cada paso se PINTAN las celdas que se usan, y los mismos números aparecen
-// con el mismo color en el reemplazo de la fórmula:
-//   xₙ₋₁ azul · xₙ violeta · f(xₙ₋₁) naranja · f(xₙ) verde · xₙ₊₁ rojo · error magenta
+// Las celdas que se usan se pintan:
+//   a azul · b violeta · f(a) naranja · f(b) verde · x(k+1) rojo · f(x(k+1)) magenta
 //
-// Todos los números vienen calculados desde Python; acá solo se muestran.
+// Todos los números vienen de Python (metodos.py); acá solo se muestran.
 
 import { numHTML, numCompacto, escapar } from "./formato.js";
+import { funcionHTML } from "./funcion.js";
 
 const DURACION_PASO = 3600;          // ms por paso a velocidad 1×
 
-/** x con subíndice real: x(3) -> "x₃" en HTML con cursiva. */
-const x = (k) => `<i>x</i><sub>${k}</sub>`;
-const fx = (k) => `<i>f</i>(${x(k)})`;
+const xk1 = (k) => `<i>x</i><sub>${k + 1}</sub>`;          // x(k+1) con su número: x₁, x₂…
 const frac = (a, b) => `<span class="m-frac"><span class="m-num-frac">${a}</span><span class="m-den">${b}</span></span>`;
-
-const COLUMNAS_TABLA = ["n", "xa", "xn", "fa", "fn", "xs"];
-// Color de cada columna (las clases c-a … c-e están en estilos.css)
-const COLOR_COLUMNA = { xa: "a", xn: "b", fa: "c", fn: "d", xs: "r", err: "e" };
-
-/** Número resaltado con el color de la celda de donde se toma. */
 const chip = (contenido, color) => `<span class="chip c-${color}">${contenido}</span>`;
-/** Símbolo de la fórmula (xₙ, f(xₙ)…) con el color de su columna. */
-const simbolo = (contenido, color) => `<span class="sim c-${color}">${contenido}</span>`;
-const COLUMNAS_ERROR = ["n", "err", "cmp"];
+const sim = (contenido, color) => `<span class="sim c-${color}">${contenido}</span>`;
+
+const COLUMNAS_TABLA = ["k", "a", "b", "fa", "fb", "x"];
+const COLUMNAS_TEST = ["k", "fx", "cmp"];
+const COLOR = { a: "a", b: "b", fa: "c", fb: "d", x: "r", fx: "e" };
 
 export class PasoAPaso {
   constructor(el) {
-    // el = { explicacion, tabla, tablaError, tituloError, posicion, lineaTiempo,
+    // el = { explicacion, tabla, tablaError, posicion, lineaTiempo,
     //        reproducir, anterior, siguiente, inicio, fin, velocidad }
     this.el = el;
     this.datos = null;
@@ -63,8 +58,8 @@ export class PasoAPaso {
     this.pausar();
     this.datos = datos;
     this.decimales = decimales;
+    this.funcionHTML = funcionHTML(datos.funcion);
     this.pasos = this._armarPasos();
-    this.el.tituloError.innerHTML = this._nombreError();
     this._crearLineaTiempo();
     this.irA(0);
   }
@@ -86,16 +81,8 @@ export class PasoAPaso {
     this.irA(indice < 0 ? 0 : indice);
   }
 
-  avanzar() {
-    this.pausar();
-    this.irA(this.actual + 1);
-  }
-
-  retroceder() {
-    this.pausar();
-    this.irA(this.actual - 1);
-  }
-
+  avanzar() { this.pausar(); this.irA(this.actual + 1); }
+  retroceder() { this.pausar(); this.irA(this.actual - 1); }
   alternar() { this.reproduciendo ? this.pausar() : this.reproducir(); }
 
   reproducir() {
@@ -126,52 +113,30 @@ export class PasoAPaso {
 
   // ------------------------------------------------------------ pasos ---
 
-  /**
-   * Arma la lista de pasos. Cada paso dice qué celdas carga ("llena")
-   * y qué mostrar en el cuadro de explicación.
-   */
+  /** Lista de pasos: qué celdas carga cada uno ("llena") y cuáles usa ("usa"). */
   _armarPasos() {
-    const r = this.datos.resultado;
-    const pasos = [];
-    r.iteraciones.forEach((it, i) => {
-      const fila = i;
-      const celda = (col) => `${fila}:${col}`;
-      const anterior = (col) => `${fila - 1}:${col}`;
-      // "usa": celdas que se toman para calcular (se pintan con su color)
-      pasos.push({ iteracion: i, tipo: "cargar", it, llena: [celda("n"), celda("xa"), celda("xn"), `e${fila}:n`],
-        usa: i === 0 ? {} : { [anterior("xn")]: "a", [anterior("xs")]: "b" } });
-      pasos.push({ iteracion: i, tipo: "fa", it, llena: [celda("fa")], usa: { [celda("xa")]: "a" } });
-      pasos.push({ iteracion: i, tipo: "fn", it, llena: [celda("fn")], usa: { [celda("xn")]: "b" } });
-      pasos.push({ iteracion: i, tipo: "secante", it, llena: [celda("xs")],
-        usa: { [celda("xa")]: "a", [celda("xn")]: "b", [celda("fa")]: "c", [celda("fn")]: "d" } });
-      pasos.push({ iteracion: i, tipo: "error", it, llena: [`e${fila}:err`],
-        usa: r.criterio === "residuo" ? { [celda("xs")]: "r" } : { [celda("xs")]: "r", [celda("xn")]: "b" } });
-      pasos.push({ iteracion: i, tipo: "comparar", it, llena: [`e${fila}:cmp`], usa: { [`e${fila}:err`]: "e" },
-        ultima: i === r.iteraciones.length - 1 });
+    const tabla = this.datos.tabla;
+    const pasos = [{ iteracion: -1, tipo: "signo", llena: [], usa: {} }];
+    tabla.forEach((fila, i) => {
+      const celda = (col) => `${i}:${col}`;
+      const anterior = (col) => `${i - 1}:${col}`;
+      pasos.push({ iteracion: i, tipo: "cargar", fila, llena: [celda("k"), celda("a"), celda("b"), `t${i}:k`],
+        usa: i === 0 ? {} : { [anterior("b")]: "a", [anterior("x")]: "b" } });
+      pasos.push({ iteracion: i, tipo: "fa", fila, llena: [celda("fa")], usa: { [celda("a")]: "a" } });
+      pasos.push({ iteracion: i, tipo: "fb", fila, llena: [celda("fb")], usa: { [celda("b")]: "b" } });
+      pasos.push({ iteracion: i, tipo: "x", fila, llena: [celda("x")],
+        usa: { [celda("a")]: "a", [celda("b")]: "b", [celda("fa")]: "c", [celda("fb")]: "d" } });
+      pasos.push({ iteracion: i, tipo: "test", fila, llena: [`t${i}:fx`], usa: { [celda("x")]: "r" } });
+      pasos.push({ iteracion: i, tipo: "comparar", fila, llena: [`t${i}:cmp`], usa: { [`t${i}:fx`]: "e" },
+        ultima: i === tabla.length - 1 });
     });
-    pasos.push({ iteracion: r.iteraciones.length, tipo: "final", llena: [], usa: {} });
+    pasos.push({ iteracion: tabla.length, tipo: "final", llena: [], usa: {} });
     return pasos;
   }
 
-  _nombreError() {
-    const c = this.datos.resultado.criterio;
-    if (c === "relativo") return "Error ε<sub>a</sub> %";
-    if (c === "residuo") return "Error |<i>f</i>(<i>x</i><sub>n+1</sub>)|";
-    return "Error E<sub>a</sub>";
-  }
-
-  /** Valor del error de una iteración según el criterio elegido. */
-  _error(it) {
-    const c = this.datos.resultado.criterio;
-    if (c === "relativo") return it.error_relativo;
-    if (c === "residuo") return Math.abs(it.f_siguiente);
-    return it.error_absoluto;
-  }
-
-  /** f(x) con x reemplazada por el valor, pintado del color de su celda: (2)³ − 4(2) − 1 */
+  /** f(x) con x reemplazada por el valor, pintado del color de su celda. */
   _sustituir(valor, color) {
-    const v = chip(`(${numCompacto(valor, this.decimales)})`, color);
-    return this.datos.funcion.html.split('<i class="m-var">x</i>').join(v);
+    return this.funcionHTML.split("<i>x</i>").join(chip(`(${numCompacto(valor, this.decimales)})`, color));
   }
 
   // ------------------------------------------------------------ render ---
@@ -184,26 +149,28 @@ export class PasoAPaso {
   }
 
   _renderPosicion(paso) {
-    const total = this.datos.resultado.iteraciones.length;
-    const indiceEnIteracion = this.pasos.filter((p, k) => p.iteracion === paso.iteracion && k <= this.actual).length;
-    this.el.posicion.textContent = paso.tipo === "final"
-      ? "Resultado final"
-      : `Iteración ${paso.iteracion + 1} de ${total} · paso ${indiceEnIteracion} de 6`;
+    const total = this.datos.tabla.length;
+    if (paso.tipo === "signo") this.el.posicion.textContent = "Antes de iterar";
+    else if (paso.tipo === "final") this.el.posicion.textContent = "Resultado final";
+    else {
+      const enIteracion = this.pasos.filter((p, k) => p.iteracion === paso.iteracion && k <= this.actual).length;
+      this.el.posicion.textContent = `k = ${paso.iteracion} (de 0 a ${total - 1}) · paso ${enIteracion} de 6`;
+    }
     const botones = this.el.lineaTiempo.children;
-    for (let k = 0; k < botones.length; k++) {
-      botones[k].classList.toggle("hecho", k < paso.iteracion);
-      botones[k].classList.toggle("actual", k === paso.iteracion);
+    for (let i = 0; i < botones.length; i++) {
+      botones[i].classList.toggle("hecho", i < paso.iteracion);
+      botones[i].classList.toggle("actual", i === paso.iteracion);
     }
   }
 
   _crearLineaTiempo() {
     const cont = this.el.lineaTiempo;
     cont.innerHTML = "";
-    this.datos.resultado.iteraciones.forEach((it, i) => {
+    this.datos.tabla.forEach((fila, i) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = it.n;
-      b.title = `Ir a la iteración ${it.n}`;
+      b.textContent = `k=${fila.k}`;
+      b.title = `Ir a la iteración k = ${fila.k}`;
       b.addEventListener("click", () => this.irAIteracion(i));
       cont.appendChild(b);
     });
@@ -212,150 +179,122 @@ export class PasoAPaso {
   /** Dibuja las dos tablas con las celdas cargadas hasta el paso actual. */
   _renderTablas(animar) {
     const d = this.decimales;
-    const r = this.datos.resultado;
+    const r = this.datos;
     const llenas = new Set();
-    for (let k = 0; k <= this.actual; k++) this.pasos[k].llena.forEach((c) => llenas.add(c));
+    for (let i = 0; i <= this.actual; i++) this.pasos[i].llena.forEach((c) => llenas.add(c));
     const paso = this.pasos[this.actual];
     const nuevas = new Set(paso.llena);
-    const usadas = paso.usa;
     const claseCelda = (clave, col) => {
-      const clases = [];
-      if (usadas[clave]) clases.push("usa", `c-${usadas[clave]}`);
-      else if (nuevas.has(clave) && COLOR_COLUMNA[col]) clases.push("carga", `c-${COLOR_COLUMNA[col]}`, animar ? "animar" : "");
-      else if (nuevas.has(clave) && col === "cmp") clases.push("carga", "c-cmp", animar ? "animar" : "");
-      return clases.join(" ");
+      if (paso.usa[clave]) return `usa c-${paso.usa[clave]}`;
+      if (nuevas.has(clave) && COLOR[col]) return `carga c-${COLOR[col]} ${animar ? "animar" : ""}`;
+      if (nuevas.has(clave) && col === "cmp") return `carga c-cmp ${animar ? "animar" : ""}`;
+      return "";
     };
-    const unidad = r.criterio === "relativo" ? " %" : "";
 
     const filasTabla = [];
-    const filasError = [];
-    r.iteraciones.forEach((it, i) => {
-      if (!llenas.has(`${i}:n`)) return;
+    const filasTest = [];
+    r.tabla.forEach((fila, i) => {
+      if (!llenas.has(`${i}:k`)) return;
       const valores = {
-        n: it.n,
-        xa: numHTML(it.x_anterior, d), xn: numHTML(it.x_actual, d),
-        fa: numHTML(it.f_anterior, d), fn: numHTML(it.f_actual, d),
-        xs: numHTML(it.x_siguiente, d),
+        k: fila.k, a: numHTML(fila.a, d), b: numHTML(fila.b, d),
+        fa: numHTML(fila.fa, d), fb: numHTML(fila.fb, d), x: numHTML(fila.x, d),
       };
-      const celdas = COLUMNAS_TABLA.map((col) => {
-        const clave = `${i}:${col}`;
-        return `<td class="${claseCelda(clave, col)}">${llenas.has(clave) ? valores[col] : ""}</td>`;
-      });
       const enCurso = paso.iteracion === i ? "en-curso" : "";
-      filasTabla.push(`<tr class="${enCurso}">${celdas.join("")}</tr>`);
+      filasTabla.push(`<tr class="${enCurso}">${COLUMNAS_TABLA.map((col) =>
+        `<td class="${claseCelda(`${i}:${col}`, col)}">${llenas.has(`${i}:${col}`) ? valores[col] : ""}</td>`).join("")}</tr>`);
 
-      const error = this._error(it);
-      const cumple = i === r.iteraciones.length - 1 && r.exitoso;
-      const valoresError = {
-        n: it.n,
-        err: error === null ? "—" : numHTML(error, d) + unidad,
-        cmp: cumple ? `&lt; ${r.tolerancia}${unidad} <b>→ para</b>` : `≥ ${r.tolerancia}${unidad} → sigue`,
+      const valoresTest = {
+        k: fila.k,
+        fx: numHTML(fila.fx, d),
+        cmp: fila.cumple ? `|f| &lt; ${r.error} <b>→ es la raíz</b>` : `|f| ≥ ${r.error} → sigue`,
       };
-      const celdasError = COLUMNAS_ERROR.map((col) => {
-        const clave = `e${i}:${col}`;
-        const clase = [col === "cmp" ? "comparacion" : "", col === "cmp" && cumple ? "cumple" : "",
-          claseCelda(clave, col)].join(" ");
-        return `<td class="${clase}">${llenas.has(clave) ? valoresError[col] : ""}</td>`;
-      });
-      filasError.push(`<tr class="${enCurso} ${cumple && llenas.has(`e${i}:cmp`) ? "final" : ""}">${celdasError.join("")}</tr>`);
+      const cumple = fila.cumple && llenas.has(`t${i}:cmp`) ? "final" : "";
+      filasTest.push(`<tr class="${enCurso} ${cumple}">${COLUMNAS_TEST.map((col) => {
+        const clave = `t${i}:${col}`;
+        const extra = col === "cmp" ? `comparacion ${fila.cumple ? "cumple" : ""}` : "";
+        return `<td class="${extra} ${claseCelda(clave, col)}">${llenas.has(clave) ? valoresTest[col] : ""}</td>`;
+      }).join("")}</tr>`);
     });
 
     const vacia = (cols) => `<tr><td colspan="${cols}" class="tenue" style="text-align:center">—</td></tr>`;
     this.el.tabla.querySelector("tbody").innerHTML = filasTabla.join("") || vacia(6);
-    this.el.tablaError.querySelector("tbody").innerHTML = filasError.join("") || vacia(3);
+    this.el.tablaError.querySelector("tbody").innerHTML = filasTest.join("") || vacia(3);
   }
 
-  /** Cuadro superior: fórmula, reemplazo y resultado del paso actual, con colores. */
+  /** Cuadro superior: fórmula, reemplazo y resultado del paso actual. */
   _renderExplicacion(paso, animar) {
     const d = this.decimales;
-    const r = this.datos.resultado;
+    const r = this.datos;
     const v = (valor) => numHTML(valor, d);
     const c = (valor) => numCompacto(valor, d);
     const p = (valor) => (valor < 0 ? `(${c(valor)})` : c(valor));
     const bloque = (etiqueta, contenido, clase = "") =>
       `<div class="paso-bloque ${clase}"><span class="paso-etiqueta">${etiqueta}</span><div class="formula-paso">${contenido}</div></div>`;
+    const fx = `<i>f</i>(<i>x</i>) = ${this.funcionHTML}`;
+    const A = sim("a", "a"), B = sim("b", "b"), FA = sim("f(a)", "c"), FB = sim("f(b)", "d");
     let titulo = "";
     let cuerpo = "";
     let nota = "";
 
-    if (paso.tipo === "final") {
-      titulo = r.exitoso ? "Resultado" : "El método se detuvo";
-      cuerpo = r.exitoso
-        ? bloque("Raíz", `<span class="resultado-paso">${x("")} ≈ ${v(r.raiz)}</span>`, "resultado")
+    if (paso.tipo === "signo") {
+      titulo = "¿Hay cambio de signo entre a y b?";
+      cuerpo = bloque("acheck", `${FA} = ${chip(v(r.fa), "c")} &nbsp;→&nbsp; ¿f(a) &gt; 0? &nbsp;→&nbsp; acheck = <b>${r.acheck ? "verdadero" : "falso"}</b>`) +
+        bloque("bcheck", `${FB} = ${chip(v(r.fb), "d")} &nbsp;→&nbsp; ¿f(b) &gt; 0? &nbsp;→&nbsp; bcheck = <b>${r.bcheck ? "verdadero" : "falso"}</b>`) +
+        bloque("Resultado", r.acheck !== r.bcheck
+          ? `<span class="resultado-paso">acheck ≠ bcheck → sí hay cambio de signo, se resuelve</span>`
+          : `<span class="resultado-paso">acheck = bcheck → no hay cambio de signo</span>`, `resultado ${r.acheck !== r.bcheck ? "cumple" : ""}`);
+      nota = `a = ${c(r.a)}, b = ${c(r.b)}, error pedido = ${r.error}.`;
+    } else if (paso.tipo === "final") {
+      titulo = r.encontrada ? "Resultado" : "El método se detuvo";
+      cuerpo = r.encontrada
+        ? bloque("Raíz", `<span class="resultado-paso">x ≈ ${v(r.raiz)}</span>`, "resultado cumple")
         : `<p>${escapar(r.mensaje)}</p>`;
-      nota = r.exitoso ? escapar(r.mensaje) : "";
+      nota = r.encontrada ? escapar(r.mensaje) + (r.advertencia ? " " + escapar(r.advertencia) : "") : "";
     } else {
-      const it = paso.it;
-      const n = it.n;
-      const ia = n - 1, in_ = n, is = n + 1;
-      // Símbolos con el color de su columna
-      const XA = simbolo(x(ia), "a"), XN = simbolo(x(in_), "b"), XS = simbolo(x(is), "r");
-      const FA = simbolo(fx(ia), "c"), FN = simbolo(fx(in_), "d");
-
+      const f = paso.fila;
+      const k = f.k;
+      const X = sim(xk1(k), "r");
       if (paso.tipo === "cargar") {
-        titulo = n === 1 ? "Cargar los valores iniciales" : "Correr los valores a la nueva fila";
-        cuerpo = n === 1
-          ? bloque("Datos", `${XA} = ${chip(c(it.x_anterior), "a")} <span class="igual">y</span> ${XN} = ${chip(c(it.x_actual), "b")}`)
-          : bloque("Se toma", `el ${simbolo("x<sub>n</sub>", "a")} de la fila ${n - 1} → pasa a ser ${XA} = ${chip(c(it.x_anterior), "a")}`) +
-            bloque("Se toma", `el ${simbolo("x<sub>n+1</sub>", "b")} de la fila ${n - 1} → pasa a ser ${XN} = ${chip(c(it.x_actual), "b")}`);
-        nota = n === 1
-          ? "Se cargan en las columnas x<sub>n−1</sub> y x<sub>n</sub> de la fila 1."
-          : `Se descarta el valor más viejo y los dos últimos se cargan en la fila ${n}.`;
-      } else if (paso.tipo === "fa" || paso.tipo === "fn") {
+        titulo = k === 0 ? "k = 0: cargar los valores iniciales" : `k = ${k}: correr los valores`;
+        cuerpo = k === 0
+          ? bloque("Datos", `${A} = ${chip(c(f.a), "a")} &nbsp; y &nbsp; ${B} = ${chip(c(f.b), "b")}`)
+          : bloque("a", `${A} toma el valor de b de la fila anterior → ${A} = ${chip(c(f.a), "a")}`) +
+            bloque("b", `${B} toma el valor de x de la fila anterior → ${B} = ${chip(c(f.b), "b")}`);
+        nota = k === 0 ? "Se cargan en las columnas a y b de la fila k = 0." : `Se cargan en la fila k = ${k}.`;
+      } else if (paso.tipo === "fa" || paso.tipo === "fb") {
         const esA = paso.tipo === "fa";
-        const color = esA ? "a" : "b";
-        const colorRes = esA ? "c" : "d";
-        const k = esA ? ia : in_;
-        const valor = esA ? it.x_anterior : it.x_actual;
-        const resultado = esA ? it.f_anterior : it.f_actual;
-        titulo = `Calcular ${fx(k)}`;
-        cuerpo = bloque("Fórmula", `<i>f</i>(<i>x</i>) = ${this.datos.funcion.html}`) +
-          bloque("Reemplazo", `${simbolo(fx(k), colorRes)} = ${this._sustituir(valor, color)}`) +
-          bloque("Resultado", `${simbolo(fx(k), colorRes)} = ${chip(v(resultado), colorRes)}`, "resultado");
-        nota = `Se toma ${simbolo(x(k), color)} de la tabla y el resultado se carga en la columna f(x<sub>${esA ? "n−1" : "n"}</sub>).`;
-      } else if (paso.tipo === "secante") {
-        titulo = `Calcular ${x(is)} con la fórmula de la secante`;
-        cuerpo = bloque("Fórmula", `${XS} = ${XN} − ${frac(`${FN} · (${XN} − ${XA})`, `${FN} − ${FA}`)}`) +
-          bloque("Reemplazo", `${XS} = ${chip(c(it.x_actual), "b")} − ${frac(
-            `${chip(p(it.f_actual), "d")} · (${chip(c(it.x_actual), "b")} − ${chip(p(it.x_anterior), "a")})`,
-            `${chip(p(it.f_actual), "d")} − ${chip(p(it.f_anterior), "c")}`)}`) +
-          bloque("Resultado", `${XS} = ${chip(v(it.x_siguiente), "r")}`, "resultado");
-        nota = "Se toman los cuatro valores pintados de la fila y el resultado se carga en la columna x<sub>n+1</sub>.";
-      } else if (paso.tipo === "error") {
-        const crit = r.criterio;
-        const E = simbolo(crit === "relativo" ? "ε<sub>a</sub>" : crit === "residuo" ? "E" : "E<sub>a</sub>", "e");
-        titulo = "Calcular el error";
-        if (crit === "relativo") {
-          cuerpo = bloque("Fórmula", `${E} = ${frac(`|${XS} − ${XN}|`, `|${XS}|`)} · 100`) +
-            bloque("Reemplazo", `${E} = ${frac(`|${chip(c(it.x_siguiente), "r")} − ${chip(p(it.x_actual), "b")}|`, `|${chip(c(it.x_siguiente), "r")}|`)} · 100`) +
-            bloque("Resultado", `${E} = ${chip((it.error_relativo === null ? "—" : v(it.error_relativo)) + " %", "e")}`, "resultado");
-        } else if (crit === "residuo") {
-          cuerpo = bloque("Fórmula", `${E} = |<i>f</i>(${XS})|`) +
-            bloque("Reemplazo", `${E} = |${this._sustituir(it.x_siguiente, "r")}|`) +
-            bloque("Resultado", `${E} = |${v(it.f_siguiente)}| = ${chip(v(Math.abs(it.f_siguiente)), "e")}`, "resultado");
-        } else {
-          cuerpo = bloque("Fórmula", `${E} = |${XS} − ${XN}|`) +
-            bloque("Reemplazo", `${E} = |${chip(c(it.x_siguiente), "r")} − ${chip(p(it.x_actual), "b")}|`) +
-            bloque("Resultado", `${E} = ${chip(v(it.error_absoluto), "e")}`, "resultado");
-        }
-        nota = "Se carga en el cuadro de la comparativa del error.";
+        const valor = esA ? f.a : f.b;
+        const res = esA ? f.fa : f.fb;
+        titulo = `Calcular ${esA ? "f(a)" : "f(b)"}`;
+        cuerpo = bloque("Fórmula", fx) +
+          bloque("Reemplazo", `${esA ? FA : FB} = ${this._sustituir(valor, esA ? "a" : "b")}`) +
+          bloque("Resultado", `${esA ? FA : FB} = ${chip(v(res), esA ? "c" : "d")}`, "resultado");
+        nota = `Se reemplaza x por ${esA ? "a" : "b"} y el resultado se carga en la columna ${esA ? "f(a)" : "f(b)"}.`;
+      } else if (paso.tipo === "x") {
+        titulo = `Calcular ${xk1(k)} con la fórmula de la secante`;
+        cuerpo = bloque("Fórmula", `${X} = ${frac(`${A} · ${FB} − ${B} · ${FA}`, `${FB} − ${FA}`)}`) +
+          bloque("Reemplazo", `${X} = ${frac(
+            `${chip(p(f.a), "a")} · ${chip(p(f.fb), "d")} − ${chip(p(f.b), "b")} · ${chip(p(f.fa), "c")}`,
+            `${chip(p(f.fb), "d")} − ${chip(p(f.fa), "c")}`)}`) +
+          bloque("Resultado", `${X} = ${chip(v(f.x), "r")}`, "resultado");
+        nota = `Se usan las cuatro celdas pintadas y el resultado se carga en la columna x<sub>k+1</sub>.`;
+      } else if (paso.tipo === "test") {
+        titulo = "Test de parada: reemplazar x<sub>k+1</sub> en la función";
+        cuerpo = bloque("Fórmula", fx) +
+          bloque("Reemplazo", `<i>f</i>(${X}) = ${this._sustituir(f.x, "r")}`) +
+          bloque("Resultado", `<i>f</i>(${X}) = ${chip(v(f.fx), "e")}`, "resultado");
+        nota = "El resultado se carga en el cuadro del test de parada.";
       } else if (paso.tipo === "comparar") {
-        const unidad = r.criterio === "relativo" ? " %" : "";
-        const error = this._error(it);
-        const nombre = simbolo(r.criterio === "relativo" ? "ε<sub>a</sub>" : r.criterio === "residuo" ? "E" : "E<sub>a</sub>", "e");
-        const cumple = paso.ultima && r.exitoso;
         titulo = "Comparar con el error pedido";
-        cuerpo = bloque("Condición", `${nombre} &lt; error pedido`) +
-          bloque("Reemplazo", `${chip(v(error) + unidad, "e")} &lt; ${r.tolerancia}${unidad}`);
-        if (cumple && r.estado === "raiz_exacta") {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">${fx(is)} = 0: raíz exacta → se detiene</span>`, "resultado cumple");
-        } else if (cumple) {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">Sí se cumple → se detiene. Raíz ≈ ${v(it.x_siguiente)}</span>`, "resultado cumple");
+        cuerpo = bloque("Condición", `|<i>f</i>(${X})| &lt; error`) +
+          bloque("Reemplazo", `${chip(c(Math.abs(f.fx)), "e")} &lt; ${r.error}`);
+        if (f.cumple) {
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">Sí → ${xk1(k)} = ${v(f.x)} es la raíz</span>`, "resultado cumple");
         } else if (paso.ultima) {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">No se cumple</span>`, "resultado");
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">No</span>`, "resultado");
           nota = escapar(r.mensaje);
         } else {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">No se cumple → se pasa a la iteración ${n + 1}</span>`, "resultado");
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">No → se pasa a k = ${k + 1}</span>`, "resultado");
         }
         if (!nota) nota = "El resultado de la comparación se carga en la última columna.";
       }

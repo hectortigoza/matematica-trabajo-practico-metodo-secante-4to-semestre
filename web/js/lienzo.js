@@ -1,10 +1,10 @@
 // lienzo.js — Gráfico interactivo de f(x) sobre papel milimetrado (canvas).
 //
-// Los puntos de la curva los calcula Python (/api/muestrear); acá solo se
+// Los puntos de la curva se calculan en la página (funcion.js); acá se
 // transforman coordenadas y se dibuja. Permite arrastrar, hacer zoom con la
 // rueda y dibujar capas extra (secantes, puntos) encima de la curva.
 
-import { llamar } from "./api.js";
+import { compilarFuncion } from "./funcion.js";
 import { colores, corto } from "./formato.js";
 
 const SUAVIZADO = (t) => 1 - Math.pow(1 - t, 3);   // easeOutCubic
@@ -25,7 +25,6 @@ export class Lienzo {
     this.alAjustar = null;           // qué hace el botón ⤢
     this.ancho = 0;
     this.alto = 0;
-    this._pedido = 0;
     this._dibujoPendiente = false;
     this._animacion = null;
     this._ultimaMuestra = 0;
@@ -154,10 +153,14 @@ export class Lienzo {
     const desde = this.vista.xmin - ancho * 0.3;
     const hasta = this.vista.xmax + ancho * 0.3;
     const puntos = Math.min(2400, Math.max(400, Math.round(this.ancho * 1.6 * 1.6)));
-    const numero = ++this._pedido;
-    const r = await llamar("muestrear", { funcion: this.funcion, desde, hasta, puntos });
-    if (numero !== this._pedido || !r.ok) return;   // llegó una respuesta vieja
-    this.curva = r.curva;
+    const f = compilarFuncion(this.funcion);
+    if (!f) return;
+    const curva = [];
+    for (let i = 0; i < puntos; i++) {
+      const x = desde + ((hasta - desde) * i) / (puntos - 1);
+      curva.push([x, f(x)]);
+    }
+    this.curva = curva;
     this.rangoCurva = [desde, hasta, puntos];
     this.solicitarDibujo();
   }

@@ -1105,7 +1105,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 .tabla-pasos td.carga.animar { animation: celda-carga2 0.5s ease 1.9s both; }
 
 /* Todo en grande */
-#vista-pasos .tabla-pasos { font-size: 1.12rem; }
+#vista-pasos .tabla-pasos { font-size: 1.12rem; table-layout: fixed; }
 #vista-pasos .tabla-pasos thead th { font-size: 1.15rem; height: 54px; }
 #vista-pasos .tabla-pasos tbody td { height: 52px; padding: 8px 14px; }
 #vista-pasos .explicacion { padding: 22px 26px; }
@@ -1170,3 +1170,6 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
   body { background: #fff; }
   .disposicion { display: block; }
 }
+
+/* Advertencia cuando la raíz encontrada queda fuera de [a, b] */
+.advertencia-final { flex-basis: 100%; margin: 0; color: var(--ocre); font-weight: 600; }

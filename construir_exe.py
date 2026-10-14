@@ -29,7 +29,7 @@ def main():
         "--exclude-module", "tkinter",
         "--exclude-module", "unittest",
         "--exclude-module", "pydoc",
-        "app.py",
+        "inicio.py",
     ]
     print("Ejecutando:", " ".join(comando))
     subprocess.run(comando, cwd=RAIZ, check=True)

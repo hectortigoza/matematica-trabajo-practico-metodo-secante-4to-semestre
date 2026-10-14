@@ -1,47 +1,41 @@
-// app.js — Interfaz principal: formulario, tabla, comparativa del error, pestañas e historial.
+// app.js — La página: formulario, tabla, test de parada, pestañas, historial y exportar.
+//
+// Python (metodos.py) resuelve el método y devuelve la tabla.
+// Todo lo demás (animación, gráficos, comparación, historial, exportar)
+// se hace acá, en la página.
 
 import { llamar } from "./api.js";
-import { numHTML, corto, escapar, reducirMovimiento } from "./formato.js";
+import { numHTML, num, corto, escapar, reducirMovimiento } from "./formato.js";
+import { compilarFuncion, funcionHTML } from "./funcion.js";
 import { PasoAPaso } from "./pasos.js";
 import { Lienzo } from "./lienzo.js";
 import { Animacion } from "./animacion.js";
 import { graficoLineas, redibujarTodos } from "./lineas.js";
+import { compararMetodos } from "./comparacion.js";
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 
-const ESTADOS = {
-  convergio: ["bien", "Convergencia alcanzada"],
-  raiz_exacta: ["bien", "Raíz exacta encontrada"],
-  max_iteraciones: ["alerta", "No converge"],
-  division_cero: ["mal", "Detenido: división por cero"],
-  fuera_dominio: ["mal", "Detenido: fuera del dominio"],
-  divergencia: ["mal", "Detenido: el método diverge"],
-  no_aplicable: ["alerta", "No aplicable"],
-  discontinuidad: ["mal", "Converge a una discontinuidad"],
-};
-
 const COLORES_METODO = { "Secante": "lapiz", "Newton-Raphson": "tinta", "Falsa posición": "ocre", "Bisección": "verde" };
+const PHI = (1 + Math.sqrt(5)) / 2;
 
 const estado = {
-  datos: null,            // última respuesta de /api/resolver
+  datos: null,                        // respuesta de Python (metodos.resolver_secante)
   decimales: 8,
   autoplayPendiente: false,           // paso a paso
-  autoplayAnimacionPendiente: false,  // animación sobre la gráfica
+  autoplayAnimacionPendiente: false,  // animación
 };
 
-// ======================================================================
-//  Elementos
-// ======================================================================
+const campo = (id) => $(`#${id}`);
 
-const form = $("#formulario");
-const campo = (nombre) => $(`#${nombre}`);
+// ======================================================================
+//  Paso a paso y animación
+// ======================================================================
 
 const pasos = new PasoAPaso({
   explicacion: $("#explicacion"),
   tabla: $("#pasos-tabla"),
   tablaError: $("#pasos-error"),
-  tituloError: $("#pasos-error-titulo"),
   posicion: $("#paso-posicion"),
   lineaTiempo: $("#linea-tiempo"),
   reproducir: $("#paso-reproducir"),
@@ -52,7 +46,6 @@ const pasos = new PasoAPaso({
   velocidad: $("#velocidad"),
 });
 
-// Animación del método sobre la gráfica (pestaña "Animación")
 const lienzoAnimacion = new Lienzo($("#grafico-animacion"));
 const animacion = new Animacion(lienzoAnimacion, {
   explicacion: $("#anim-explicacion"),
@@ -64,6 +57,45 @@ const animacion = new Animacion(lienzoAnimacion, {
   fin: $("#anim-fin"),
   velocidad: $("#anim-velocidad"),
 });
+
+/** La animación usa otros nombres de datos: se los arma a partir de la tabla. */
+function datosParaAnimacion(r) {
+  const iteraciones = r.tabla.map((fila) => ({
+    n: fila.k,
+    x_anterior: fila.a, x_actual: fila.b,
+    f_anterior: fila.fa, f_actual: fila.fb,
+    x_siguiente: fila.x, f_siguiente: fila.fx,
+    error_absoluto: Math.abs(fila.x - fila.b),
+    error_relativo: fila.x !== 0 ? Math.abs((fila.x - fila.b) / fila.x) * 100 : null,
+    pendiente: (fila.fb - fila.fa) / (fila.b - fila.a),
+  }));
+  // Curva de la función en un rango que contiene todos los puntos
+  const xs = [r.a, r.b, ...r.tabla.map((f) => f.x)].filter(Number.isFinite);
+  let desde = Math.min(...xs), hasta = Math.max(...xs);
+  const margen = (hasta - desde || 1) * 0.35;
+  desde -= margen; hasta += margen;
+  const f = compilarFuncion(r.funcion);
+  const curva = [];
+  for (let i = 0; i < 700; i++) {
+    const x = desde + ((hasta - desde) * i) / 699;
+    curva.push([x, f ? f(x) : null]);
+  }
+  return {
+    funcion: { texto: r.funcion, html: funcionHTML(r.funcion) },
+    curva,
+    rango: [desde, hasta],
+    resultado: {
+      x0: r.a, x1: r.b, f_x0: r.fa, f_x1: r.fb,
+      iteraciones,
+      criterio: "residuo",
+      tolerancia: r.error,
+      exitoso: r.encontrada,
+      estado: r.encontrada ? "convergio" : "max_iteraciones",
+      mensaje: r.mensaje,
+      raiz: r.raiz,
+    },
+  };
+}
 
 // ======================================================================
 //  Utilidades
@@ -77,44 +109,23 @@ function avisar(texto, tipo = "") {
   avisar._t = setTimeout(() => { el.className = "aviso"; }, tipo === "error" ? 5000 : 2600);
 }
 
-function demorar(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
-
-function criterio() {
-  return campo("criterio").value;
-}
-
 function datosFormulario() {
   return {
     funcion: campo("funcion").value,
-    x0: campo("x0").value,
-    x1: campo("x1").value,
-    tolerancia: campo("tolerancia").value,
-    criterio: criterio(),
+    a: campo("x0").value,
+    b: campo("x1").value,
+    error: campo("tolerancia").value,
   };
 }
 
 function cargarEnFormulario(d) {
   campo("funcion").value = d.funcion;
-  campo("x0").value = d.x0;
-  campo("x1").value = d.x1;
-  if (d.tolerancia !== undefined) campo("tolerancia").value = d.tolerancia;
-  if (d.criterio) campo("criterio").value = d.criterio;
-  actualizarUnidadError();
+  campo("x0").value = d.a;
+  campo("x1").value = d.b;
+  if (d.error !== undefined) campo("tolerancia").value = d.error;
   limpiarErrores();
-  analizarFuncion();
+  vistaPrevia();
 }
-
-/** Con el criterio relativo, el error pedido es un porcentaje. */
-function actualizarUnidadError() {
-  $("#unidad-error").textContent = criterio() === "relativo" ? "(%)" : "";
-}
-
-// ======================================================================
-//  Errores de validación
-// ======================================================================
 
 function limpiarErrores() {
   $$(".campo.con-error").forEach((c) => c.classList.remove("con-error"));
@@ -130,64 +141,25 @@ function mostrarErrores(errores) {
     contenedor.classList.add("con-error");
     const p = $(".error-campo", contenedor);
     p.textContent = p.textContent ? `${p.textContent} ${e.mensaje}` : e.mensaje;
-    if (e.campo === "funcion" && e.posicion !== undefined) marcarErrorFuncion(e);
   }
   const primero = $(".campo.con-error input");
   if (primero) primero.focus();
   avisar(generales.length ? generales.join(" ") : "Revisá los datos marcados en rojo.", "error");
 }
 
-function marcarErrorFuncion(error) {
+/** Muestra la función escrita en forma matemática mientras se escribe. */
+function vistaPrevia() {
   const texto = campo("funcion").value;
-  const ini = Math.min(error.posicion, texto.length);
-  const fin = Math.min(ini + (error.longitud || 1), texto.length);
-  const marcado = ini >= texto.length
-    ? `${escapar(texto)}<mark>&nbsp;</mark>`
-    : `${escapar(texto.slice(0, ini))}<mark>${escapar(texto.slice(ini, fin))}</mark>${escapar(texto.slice(fin))}`;
-  $("#vista-funcion").innerHTML = `<span style="font-family:var(--fuente-ui);font-size:1rem">${marcado}</span>`;
-}
-
-// ======================================================================
-//  Vista previa de la ecuación mientras se escribe
-// ======================================================================
-
-let pedidoAnalisis = 0;
-
-async function analizarFuncion() {
-  const texto = campo("funcion").value;
-  const contenedor = $('.campo[data-campo="funcion"]');
   const vista = $("#vista-funcion");
-  const numero = ++pedidoAnalisis;
-
-  if (!texto.trim()) {
-    vista.innerHTML = "";
-    contenedor.classList.remove("con-error");
-    $(".error-campo", contenedor).textContent = "";
-    return;
-  }
-
-  const r = await llamar("analizar", { funcion: texto });
-  if (numero !== pedidoAnalisis) return;
-
-  if (!r.ok) {
-    const e = r.errores[0];
-    contenedor.classList.add("con-error");
-    $(".error-campo", contenedor).textContent = e.mensaje;
-    if (e.posicion !== undefined) marcarErrorFuncion(e);
-    else vista.innerHTML = "";
-    return;
-  }
-
-  contenedor.classList.remove("con-error");
-  $(".error-campo", contenedor).textContent = "";
-  vista.innerHTML = `<i>f</i>(<i>x</i>) = ${r.html}`;
-
-  // Si la ecuación cambió, la tabla anterior deja de corresponder
-  if (estado.datos && estado.datos.funcion.texto !== r.texto) invalidarResultado();
+  if (!texto.trim()) { vista.innerHTML = ""; return; }
+  vista.innerHTML = compilarFuncion(texto)
+    ? `<i>f</i>(<i>x</i>) = ${funcionHTML(texto)}`
+    : `<span class="vista-error">Revisá la función: hay algo mal escrito.</span>`;
+  if (estado.datos && estado.datos.funcion !== texto) invalidarResultado();
 }
 
 // ======================================================================
-//  Resolver
+//  Resolver: se llama a Python (metodos.resolver_secante)
 // ======================================================================
 
 async function resolver() {
@@ -202,13 +174,10 @@ async function resolver() {
     return;
   }
 
-  // Sin cambio de signo entre x₀ y x₁ no se resuelve la tabla: solo se informa
-  if (r.sin_cambio_de_signo) {
-    invalidarResultado();
-    $("#resolver-vacio").hidden = true;
-    renderCambioSigno(r, false);
-    return;
-  }
+  invalidarResultado();
+  $("#resolver-vacio").hidden = true;
+  renderCambioSigno(r);
+  if (!r.cambio_de_signo) return;           // sin cambio de signo no se resuelve la tabla
 
   estado.datos = r;
   estado.autoplayPendiente = true;
@@ -218,7 +187,7 @@ async function resolver() {
   contenido.classList.remove("revelar");
   void contenido.offsetWidth;
   contenido.classList.add("revelar");
-  cargarHistorial();
+  guardarEnHistorial(r);
 }
 
 function invalidarResultado() {
@@ -233,197 +202,148 @@ function invalidarResultado() {
 }
 
 function renderizarTodo() {
-  const d = estado.datos;
-  if (!d) return;
+  const r = estado.datos;
   $("#resolver-vacio").hidden = true;
   $("#resultado-contenido").hidden = false;
-  $$("[data-sin-datos]").forEach((el) => { el.hidden = true; });
-  $$("[data-con-datos]").forEach((el) => { el.hidden = false; });
+  $$("[data-sin-datos]").forEach((el) => { el.hidden = !!r.tabla.length; });
+  $$("[data-con-datos]").forEach((el) => { el.hidden = !r.tabla.length; });
 
-  renderTablas(d);
-  renderConvergencia(d);
-  renderComparacion(d);
-  pasos.cargar(d, estado.decimales);
-  animacion.cargar(d, estado.decimales);
+  renderTablas(r);
+  if (!r.tabla.length) return;              // a o b ya eran la raíz: no hay iteraciones
+  renderConvergencia(r);
+  renderComparacion(r);
+  pasos.cargar(r, estado.decimales);
+  animacion.cargar(datosParaAnimacion(r), estado.decimales);
   if (pestanaActiva() === "pasos") iniciarAutoplay();
   if (pestanaActiva() === "animacion") iniciarAnimacion();
 }
 
-/** Valor del error según el criterio elegido en la cabecera del cuadro. */
-function errorSegunCriterio(it, criterioActual) {
-  if (criterioActual === "relativo") return it.error_relativo;
-  if (criterioActual === "residuo") return Math.abs(it.f_siguiente);
-  return it.error_absoluto;
-}
-
-function renderTablas(d) {
-  const r = d.resultado;
-  const dec = estado.decimales;
-  const its = r.iteraciones;
-  const tol = r.tolerancia;
-  const unidad = r.criterio === "relativo" ? " %" : "";
-  const ultima = its.length - 1;
-
-  // ---- Cuadro izquierdo: la tabla con los valores iniciales y los resultados de la fórmula
-  $("#tabla-iteraciones tbody").innerHTML = its.map((it, k) => `
-    <tr data-i="${k}" class="${k === ultima && r.exitoso ? "final" : ""}" title="Ver la iteración ${it.n} paso a paso">
-      <td>${it.n}</td>
-      <td>${numHTML(it.x_anterior, dec)}</td><td>${numHTML(it.x_actual, dec)}</td>
-      <td>${numHTML(it.f_anterior, dec)}</td><td>${numHTML(it.f_actual, dec)}</td>
-      <td class="col-nueva">${numHTML(it.x_siguiente, dec)}</td>
-    </tr>`).join("")
-    || `<tr><td colspan="6" class="tenue" style="text-align:center">No se realizaron iteraciones.</td></tr>`;
-
-  // ---- Cuadro derecho: la comparativa del error contra el error pedido
-  $("#tabla-error tbody").innerHTML = its.map((it, k) => {
-    const error = errorSegunCriterio(it, r.criterio);
-    const cumple = k === ultima && r.exitoso;
-    const comparacion = error === null
-      ? "—"
-      : cumple
-        ? `&lt; ${tol}${unidad} <b>→ se detiene</b>`
-        : `≥ ${tol}${unidad} → sigue iterando`;
-    return `<tr class="${cumple ? "final" : ""}">
-      <td>${it.n}</td>
-      <td>${error === null ? "—" : numHTML(error, dec) + unidad}</td>
-      <td class="comparacion ${cumple ? "cumple" : ""}">${comparacion}</td>
-    </tr>`;
-  }).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
-
-  // ---- Cambio de signo entre x₀ y x₁ (teorema de Bolzano)
-  renderCambioSigno({ f_x0: r.f_x0, f_x1: r.f_x1, verificacion: d.verificacion }, true);
-
-  // ---- Resultado final
-  const [clase, texto] = ESTADOS[r.estado] || ["alerta", r.estado];
-  const final = $("#resultado-final");
-  if (r.exitoso) {
-    final.innerHTML = `
-      <span class="estado ${clase}">${texto}</span>
-      <p class="raiz-final">Raíz ≈ <b>${numHTML(r.raiz, dec)}</b></p>
-      <p class="tenue">${escapar(r.mensaje)} El error ${errorNombre(r.criterio)} quedó en
-        ${numHTML(errorSegunCriterio(its[ultima] || {}, r.criterio) ?? 0, dec)}${unidad}, menor que ${tol}${unidad}.</p>`;
-  } else {
-    final.innerHTML = `
-      <span class="estado ${clase}">${texto}</span>
-      <p class="tenue">${escapar(r.mensaje)}</p>`;
-  }
-}
-
-/**
- * ¿Hay cambio de signo entre x₀ y x₁? Si f(x₀)·f(x₁) < 0 y f es continua,
- * por el teorema de Bolzano hay al menos una raíz entre ellos.
- * El sistema solo resuelve la tabla cuando hay cambio de signo.
- *   datos = { f_x0, f_x1, verificacion }      resuelto = ¿se armó la tabla?
- */
-function renderCambioSigno(datos, resuelto) {
-  const v = datos.verificacion;
+/** acheck = f(a) > 0, bcheck = f(b) > 0. Si son iguales, no hay cambio de signo. */
+function renderCambioSigno(r) {
   const dec = estado.decimales;
   const caja = $("#cambio-signo");
-  const par = (x) => (x < 0 ? `(${numHTML(x, dec)})` : numHTML(x, dec));
+  const si = (v) => (v ? "verdadero" : "falso");
   caja.hidden = false;
-
-  if (datos.f_x0 === null || datos.f_x0 === undefined || datos.f_x1 === null || datos.f_x1 === undefined) {
-    caja.className = "hoja cambio-signo alerta";
-    caja.innerHTML = `<h2>¿Hay cambio de signo entre <i>x</i>₀ y <i>x</i>₁?</h2>
-      <p class="veredicto-signo">No se puede verificar</p>
-      <p>f(x) no está definida en x₀ o en x₁. Elegí valores iniciales dentro del dominio de la función.</p>`;
-    return;
-  }
-
-  const producto = datos.f_x0 * datos.f_x1;
-  const signo = producto < 0 ? "&lt; 0" : producto > 0 ? "&gt; 0" : "= 0";
-  let veredicto;
-  if (v.cumple) veredicto = "Sí hay cambio de signo: hay una raíz entre x₀ y x₁, se resuelve la tabla.";
-  else if (producto < 0) veredicto = "El cambio de signo se debe a una discontinuidad, no a una raíz: no se resuelve la tabla.";
-  else veredicto = "No hay cambio de signo: no se resuelve la tabla.";
-
-  caja.className = `hoja cambio-signo ${v.cumple ? "hay" : "alerta"}`;
+  caja.className = `hoja cambio-signo ${r.cambio_de_signo ? "hay" : "alerta"}`;
   caja.innerHTML = `
-    <h2>¿Hay cambio de signo entre <i>x</i>₀ y <i>x</i>₁?</h2>
-    <p class="formula-signo">
-      <i>f</i>(<i>x</i>₀) · <i>f</i>(<i>x</i>₁) = ${par(datos.f_x0)} · ${par(datos.f_x1)} = <b>${numHTML(producto, dec)} ${signo}</b>
-    </p>
-    <p class="veredicto-signo">${veredicto}</p>
-    ${resuelto ? "" : `<p class="tenue">Elegí valores iniciales x₀ y x₁ donde f(x) tenga signos opuestos, es decir, que la raíz quede entre ellos.</p>`}
-    ${v.detalle.length ? `<ul class="tenue">${v.detalle.map((t) => `<li>${escapar(t)}</li>`).join("")}</ul>` : ""}`;
+    <h2>¿Hay cambio de signo entre <i>a</i> y <i>b</i>?</h2>
+    <p class="formula-signo">f(a) = f(${num(r.a, dec)}) = ${numHTML(r.fa, dec)} &nbsp;→&nbsp; acheck = f(a) &gt; 0 = <b>${si(r.acheck)}</b></p>
+    <p class="formula-signo">f(b) = f(${num(r.b, dec)}) = ${numHTML(r.fb, dec)} &nbsp;→&nbsp; bcheck = f(b) &gt; 0 = <b>${si(r.bcheck)}</b></p>
+    <p class="veredicto-signo">${r.cambio_de_signo
+      ? "acheck ≠ bcheck → sí hay cambio de signo: se resuelve la tabla."
+      : "acheck = bcheck → no hay cambio de signo: no se resuelve la tabla."}</p>
+    ${r.cambio_de_signo ? "" : `<p class="tenue">Elegí valores de a y b donde f(x) tenga signos opuestos.</p>`}`;
 }
 
-function errorNombre(criterioActual) {
-  if (criterioActual === "relativo") return "relativo |xₙ₊₁ − xₙ| / |xₙ₊₁|";
-  if (criterioActual === "residuo") return "|f(xₙ₊₁)|";
-  return "|xₙ₊₁ − xₙ|";
+function renderTablas(r) {
+  const dec = estado.decimales;
+  const ultima = r.tabla.length - 1;
+
+  // Cuadro izquierdo: la tabla
+  $("#tabla-iteraciones tbody").innerHTML = r.tabla.map((f, i) => `
+    <tr data-i="${i}" class="${f.cumple ? "final" : ""}" title="Ver la iteración k = ${f.k} paso a paso">
+      <td>${f.k}</td>
+      <td>${numHTML(f.a, dec)}</td><td>${numHTML(f.b, dec)}</td>
+      <td>${numHTML(f.fa, dec)}</td><td>${numHTML(f.fb, dec)}</td>
+      <td class="col-nueva">${numHTML(f.x, dec)}</td>
+    </tr>`).join("") || `<tr><td colspan="6" class="tenue" style="text-align:center">No hizo falta iterar.</td></tr>`;
+
+  // Cuadro derecho: test de parada |f(x(k+1))| < error
+  $("#tabla-error tbody").innerHTML = r.tabla.map((f) => `
+    <tr class="${f.cumple ? "final" : ""}">
+      <td>${f.k}</td>
+      <td>${numHTML(f.fx, dec)}</td>
+      <td class="comparacion ${f.cumple ? "cumple" : ""}">${f.cumple
+        ? `${num(Math.abs(f.fx), dec)} &lt; ${r.error} <b>→ sí, es la raíz</b>`
+        : `${num(Math.abs(f.fx), dec)} ≥ ${r.error} → no, sigue`}</td>
+    </tr>`).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
+
+  // Resultado final
+  const final = $("#resultado-final");
+  if (r.encontrada) {
+    final.innerHTML = `
+      <span class="estado bien">Raíz encontrada</span>
+      <p class="raiz-final">x ≈ <b>${numHTML(r.raiz, dec)}</b></p>
+      <p class="tenue">${escapar(r.mensaje)}${ultima >= 0 ? ` |f(x)| = ${num(Math.abs(r.tabla[ultima].fx), dec)} &lt; ${r.error}.` : ""}</p>
+      ${r.advertencia ? `<p class="advertencia-final">${escapar(r.advertencia)}</p>` : ""}`;
+  } else {
+    final.innerHTML = `<span class="estado mal">Sin resultado</span><p class="tenue">${escapar(r.mensaje)}</p>`;
+  }
 }
 
-function renderConvergencia(d) {
-  const its = d.resultado.iteraciones;
+// ======================================================================
+//  Convergencia (se calcula en la página)
+// ======================================================================
+
+function renderConvergencia(r) {
+  const errores = r.tabla.map((f) => Math.abs(f.x - f.b));
   graficoLineas($("#canvas-error"), {
     logY: true,
-    etiquetaX: "iteración",
+    etiquetaX: "k",
+    referencia: { y: r.error, etiqueta: `error pedido = ${r.error}` },
     series: [
-      { nombre: "Error absoluto Eₐ", color: "lapiz", puntos: its.map((it) => [it.n, it.error_absoluto]) },
-      { nombre: "|f(xₙ₊₁)|", color: "tinta", puntos: its.map((it) => [it.n, Math.abs(it.f_siguiente)]), punteada: true },
+      { nombre: "|f(xₖ₊₁)|", color: "lapiz", puntos: r.tabla.map((f) => [f.k, Math.abs(f.fx)]) },
+      { nombre: "|xₖ₊₁ − b|", color: "tinta", puntos: r.tabla.map((f, i) => [f.k, errores[i]]), punteada: true },
     ],
   });
+
+  // Orden de convergencia: p ≈ ln(e(k+1)/e(k)) / ln(e(k)/e(k-1))
+  const estimaciones = [];
+  for (let i = 2; i < errores.length; i++) {
+    const [e0, e1, e2] = [errores[i - 2], errores[i - 1], errores[i]];
+    const ruido = 1e-13 * (1 + Math.abs(r.tabla[i].x));
+    let p = null;
+    if (e0 > 0 && e1 > ruido && e2 > ruido && e1 !== e0) p = Math.log(e2 / e1) / Math.log(e1 / e0);
+    estimaciones.push([r.tabla[i].k, p]);
+  }
   graficoLineas($("#canvas-orden"), {
-    etiquetaX: "iteración",
+    etiquetaX: "k",
     limitesY: [-0.5, 3.5],
-    referencia: { y: d.analisis.orden_teorico, etiqueta: "φ ≈ 1.618" },
-    series: [{ nombre: "p estimado", color: "lapiz", puntos: d.analisis.estimaciones_orden.map((e) => [e.n, e.p]) }],
+    referencia: { y: PHI, etiqueta: "φ ≈ 1.618" },
+    series: [{ nombre: "p estimado", color: "lapiz", puntos: estimaciones }],
   });
 
-  const r = d.resultado;
-  const a = d.analisis;
-  const parrafos = [];
-  const [, textoEstado] = ESTADOS[r.estado] || ["", r.estado];
-  parrafos.push(`<p><b>${textoEstado}.</b> ${escapar(r.mensaje)}</p>`);
-  if (a.orden_estimado !== null) {
-    parrafos.push(`<p>El orden de convergencia estimado con las últimas iteraciones es <b>p ≈ ${a.orden_estimado.toFixed(3)}</b>. ` +
-      `La teoría predice φ = (1 + √5)/2 ≈ 1.618 cuando f′(r) ≠ 0: cerca de la raíz, ` +
-      `<b>la cantidad de cifras correctas se multiplica por ≈ 1.6 en cada iteración</b>.</p>`);
-  } else {
-    parrafos.push("<p>Hacen falta al menos tres iteraciones para estimar el orden de convergencia.</p>");
-  }
-  if (a.cifras_significativas !== null && r.exitoso) {
-    parrafos.push(`<p>Con un error relativo de ${numHTML(r.error_relativo, 6)} %, el criterio de Scarborough asegura ` +
-      `al menos <b>${a.cifras_significativas} cifras significativas</b> correctas.</p>`);
-  }
-  for (const t of a.advertencias) parrafos.push(`<p class="tenue">⚠ ${escapar(t)}</p>`);
-  $("#texto-convergencia").innerHTML = parrafos.join("");
+  const validas = estimaciones.map(([, p]) => p).filter((p) => p !== null && p > 0 && p < 4).slice(-2);
+  const orden = validas.length ? validas.reduce((s, p) => s + p, 0) / validas.length : null;
+  const textos = [`<p><b>${r.encontrada ? "Converge." : "No converge."}</b> ${escapar(r.mensaje)}</p>`];
+  textos.push(orden !== null
+    ? `<p>Orden de convergencia estimado: <b>p ≈ ${orden.toFixed(3)}</b>. La teoría dice que la secante tiene orden φ = (1 + √5)/2 ≈ 1.618: en cada iteración las cifras correctas se multiplican por ≈ 1.6.</p>`
+    : "<p>Hacen falta al menos tres iteraciones para estimar el orden de convergencia.</p>");
+  $("#texto-convergencia").innerHTML = textos.join("");
 }
 
-function renderComparacion(d) {
+// ======================================================================
+//  Comparación con otros métodos (se calcula en la página)
+// ======================================================================
+
+function renderComparacion(r) {
   const dec = estado.decimales;
-  const metodos = d.comparacion.metodos;
+  const f = compilarFuncion(r.funcion);
+  if (!f) return;
+  const { metodos, conclusiones } = compararMetodos(f, r);
   const exitosos = metodos.filter((m) => m.exitoso);
   const mejor = exitosos.length ? Math.min(...exitosos.map((m) => m.iteraciones.length)) : null;
 
-  $("#tabla-comparacion tbody").innerHTML = metodos.map((m) => {
-    const [clase, texto] = ESTADOS[m.estado] || ["alerta", m.estado];
-    const color = `var(--${COLORES_METODO[m.metodo]})`;
-    return `<tr class="${m.exitoso && m.iteraciones.length === mejor ? "destacada" : ""}">
-      <td><span class="muestra" style="background:${color}"></span>${m.metodo}</td>
+  $("#tabla-comparacion tbody").innerHTML = metodos.map((m) => `
+    <tr class="${m.exitoso && m.iteraciones.length === mejor ? "destacada" : ""}">
+      <td><span class="muestra" style="background:var(--${COLORES_METODO[m.metodo]})"></span>${m.metodo}</td>
       <td>${escapar(m.descripcion)}</td>
-      <td>${m.aplicable ? m.iteraciones.length : "—"}</td>
+      <td>${m.iteraciones.length}</td>
       <td>${m.raiz === null ? "—" : numHTML(m.raiz, dec)}</td>
-      <td><span class="estado ${clase}" title="${escapar(m.mensaje)}">${texto}</span></td>
-    </tr>`;
-  }).join("");
-
-  const newton = metodos.find((m) => m.metodo === "Newton-Raphson");
-  $("#derivada-newton").innerHTML = newton?.derivada_html
-    ? `Derivada usada por Newton-Raphson (calculada simbólicamente): <i>f′</i>(<i>x</i>) = ${newton.derivada_html}` : "";
+      <td><span class="estado ${m.exitoso ? "bien" : "mal"}" title="${escapar(m.mensaje)}">${m.exitoso ? "Convergió" : "No convergió"}</span></td>
+    </tr>`).join("");
+  $("#derivada-newton").innerHTML = "Newton-Raphson usa una derivada aproximada: f′(x) ≈ (f(x+h) − f(x−h)) / 2h.";
 
   graficoLineas($("#canvas-comparacion"), {
     logY: true,
-    etiquetaX: "iteración",
+    etiquetaX: "k",
     series: metodos.filter((m) => m.iteraciones.length).map((m) => ({
       nombre: m.metodo,
       color: COLORES_METODO[m.metodo],
-      puntos: m.iteraciones.map((it) => [it.n, it.error_absoluto]),
+      puntos: m.iteraciones.map((it) => [it.n, Math.abs(it.fx)]),
     })),
   });
-
-  $("#conclusiones-comparacion").innerHTML = d.comparacion.conclusiones.map((t) => `<li>${escapar(t)}</li>`).join("");
+  $("#conclusiones-comparacion").innerHTML = conclusiones.map((t) => `<li>${escapar(t)}</li>`).join("");
 }
 
 // ======================================================================
@@ -433,8 +353,7 @@ function renderComparacion(d) {
 const pestanas = $$(".pestanas [role=tab]");
 
 function pestanaActiva() {
-  const activa = pestanas.find((p) => p.getAttribute("aria-selected") === "true");
-  return activa.id.replace("tab-", "");
+  return pestanas.find((p) => p.getAttribute("aria-selected") === "true").id.replace("tab-", "");
 }
 
 function activarPestana(nombre) {
@@ -444,11 +363,9 @@ function activarPestana(nombre) {
     p.tabIndex = activa ? 0 : -1;
     $(`#${p.getAttribute("aria-controls")}`).hidden = !activa;
   }
-  if (nombre === "pasos") iniciarAutoplay();
-  else pasos.pausar();
-  if (nombre === "animacion") iniciarAnimacion();
-  else animacion.pausar();
-  if (nombre === "historial") cargarHistorial();
+  if (nombre === "pasos") iniciarAutoplay(); else pasos.pausar();
+  if (nombre === "animacion") iniciarAnimacion(); else animacion.pausar();
+  if (nombre === "historial") renderHistorial();
   requestAnimationFrame(redibujarTodos);
 }
 
@@ -475,93 +392,152 @@ pestanas.forEach((p, k) => {
 });
 
 // ======================================================================
-//  Historial
+//  Historial (se guarda en el navegador)
 // ======================================================================
 
-async function cargarHistorial() {
-  const r = await llamar("historial");
-  if (r.ok) renderHistorial(r.historial);
+function leerHistorial() {
+  try { return JSON.parse(localStorage.getItem("historial") || "[]"); } catch (e) { return []; }
 }
 
-function renderHistorial(lista) {
+function guardarHistorial(lista) {
+  try { localStorage.setItem("historial", JSON.stringify(lista.slice(0, 50))); } catch (e) { /* sin almacenamiento */ }
+}
+
+function guardarEnHistorial(r) {
+  const entrada = {
+    id: String(Date.now()),
+    fecha: new Date().toLocaleString("es"),
+    funcion: r.funcion, a: r.a, b: r.b, error: r.error,
+    raiz: r.raiz, iteraciones: r.tabla.length, encontrada: r.encontrada,
+  };
+  const lista = leerHistorial().filter((h) => !(h.funcion === r.funcion && h.a === r.a && h.b === r.b && h.error === r.error));
+  guardarHistorial([entrada, ...lista]);
+}
+
+function renderHistorial() {
+  const lista = leerHistorial();
   const ul = $("#lista-historial");
   if (!lista.length) {
     ul.innerHTML = `<li class="historial-vacio">Todavía no resolviste ningún ejercicio. Los que resuelvas aparecen acá.</li>`;
     return;
   }
-  ul.innerHTML = lista.map((h) => {
-    const [clase] = ESTADOS[h.estado] || ["alerta"];
-    return `<li data-id="${escapar(h.id)}">
+  ul.innerHTML = lista.map((h) => `
+    <li data-id="${escapar(h.id)}">
       <div>
-        <div class="historial-fx">f(x) = ${escapar(h.funcion)}</div>
-        <div class="historial-detalle">x₀ = ${escapar(h.x0)}, x₁ = ${escapar(h.x1)}, error = ${escapar(h.tolerancia)} ·
-          ${h.raiz === null || !h.exitoso ? "sin raíz" : `raíz ≈ ${corto(h.raiz, 10)}`} · ${h.iteraciones} it. · ${escapar(h.fecha)}
-          <span class="estado ${clase}" style="padding:1px 8px;font-size:.72rem;margin-left:4px">${(ESTADOS[h.estado] || ["", h.estado])[1]}</span></div>
+        <div class="historial-fx">f(x) = ${funcionHTML(h.funcion)}</div>
+        <div class="historial-detalle">a = ${h.a}, b = ${h.b}, error = ${h.error} ·
+          ${h.encontrada ? `raíz ≈ ${corto(h.raiz, 10)}` : "sin raíz"} · ${h.iteraciones} iteraciones · ${escapar(h.fecha)}</div>
       </div>
       <button type="button" class="boton-chico" data-accion="cargar">Volver a resolver</button>
       <button type="button" class="boton-borrar" data-accion="borrar" title="Borrar del historial" aria-label="Borrar">×</button>
-    </li>`;
-  }).join("");
-  ul._lista = lista;
+    </li>`).join("");
 }
 
 $("#lista-historial").addEventListener("click", async (e) => {
   const boton = e.target.closest("button[data-accion]");
   if (!boton) return;
   const id = boton.closest("li").dataset.id;
+  const lista = leerHistorial();
   if (boton.dataset.accion === "borrar") {
-    const r = await llamar("historial/borrar", { id });
-    if (r.ok) renderHistorial(r.historial);
+    guardarHistorial(lista.filter((h) => h.id !== id));
+    renderHistorial();
     return;
   }
-  const h = $("#lista-historial")._lista.find((x) => x.id === id);
+  const h = lista.find((x) => x.id === id);
   if (!h) return;
-  cargarEnFormulario(h);
+  cargarEnFormulario({ funcion: h.funcion, a: String(h.a), b: String(h.b), error: String(h.error) });
   activarPestana("resolver");
   await resolver();
 });
 
-$("#btn-vaciar-historial").addEventListener("click", async () => {
+$("#btn-vaciar-historial").addEventListener("click", () => {
   if (!confirm("¿Borrar todos los ejercicios del historial?")) return;
-  const r = await llamar("historial/borrar", {});
-  if (r.ok) renderHistorial([]);
+  guardarHistorial([]);
+  renderHistorial();
 });
 
 // ======================================================================
-//  Exportar
+//  Exportar (se arma el archivo en la página)
 // ======================================================================
 
-$$("[data-exportar]").forEach((b) => b.addEventListener("click", async () => {
-  const formato = b.dataset.exportar;
-  const r = await llamar("exportar", { ...datosFormulario(), formato, decimales: estado.decimales });
-  if (!r.ok) { mostrarErrores(r.errores); return; }
-  const blob = new Blob([r.contenido], { type: r.tipo });
-  const url = URL.createObjectURL(blob);
-  if (formato === "html") {
-    window.open(url, "_blank");
-    avisar("Informe abierto en una pestaña nueva. Usá Ctrl+P para guardarlo como PDF.");
-  } else {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = r.nombre;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    avisar(`Se descargó ${r.nombre}`);
-  }
+function descargar(nombre, contenido, tipo) {
+  const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+$$("[data-exportar]").forEach((b) => b.addEventListener("click", () => {
+  const r = estado.datos;
+  if (!r) return;
+  const dec = estado.decimales;
+  const formato = b.dataset.exportar;
+
+  if (formato === "csv") {
+    // ; y coma decimal para que Excel en español lo abra en columnas
+    const n = (v) => num(v, dec).replace("−", "-").replace(".", ",");
+    const lineas = [`f(x);${r.funcion}`, `a;${n(r.a)}`, `b;${n(r.b)}`, `error;${n(r.error)}`, "",
+      "k;a;b;f(a);f(b);x(k+1);f(x(k+1));¿|f(x(k+1))| < error?",
+      ...r.tabla.map((f) => [f.k, n(f.a), n(f.b), n(f.fa), n(f.fb), n(f.x), n(f.fx), f.cumple ? "sí" : "no"].join(";")),
+      "", `Raíz;${r.raiz === null ? "-" : n(r.raiz)}`];
+    descargar("secante.csv", "﻿" + lineas.join("\r\n"), "text/csv;charset=utf-8");
+    avisar("Se descargó secante.csv");
+    return;
+  }
+
+  if (formato === "txt") {
+    const ancho = dec + 8;
+    const col = (v) => num(v, dec).padStart(ancho);
+    const lineas = ["MÉTODO DE LA SECANTE", `f(x) = ${r.funcion}`, `a = ${r.a}   b = ${r.b}   error = ${r.error}`, "",
+      "   k" + ["a", "b", "f(a)", "f(b)", "x(k+1)", "f(x(k+1))"].map((t) => t.padStart(ancho)).join(""),
+      ...r.tabla.map((f) => String(f.k).padStart(4) + [f.a, f.b, f.fa, f.fb, f.x, f.fx].map(col).join("")),
+      "", r.mensaje, r.raiz === null ? "" : `Raíz ≈ ${num(r.raiz, dec)}`];
+    descargar("secante.txt", lineas.join("\r\n"), "text/plain;charset=utf-8");
+    avisar("Se descargó secante.txt");
+    return;
+  }
+
+  // Informe para imprimir o guardar como PDF
+  const v = (x) => numHTML(x, dec);
+  const filas = r.tabla.map((f) => `<tr><td>${f.k}</td><td>${v(f.a)}</td><td>${v(f.b)}</td><td>${v(f.fa)}</td><td>${v(f.fb)}</td>
+    <td>${v(f.x)}</td><td>${v(f.fx)}</td><td>${f.cumple ? "sí" : "no"}</td></tr>`).join("");
+  const informe = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Informe — Método de la Secante</title>
+    <style>body{font-family:Georgia,serif;max-width:900px;margin:30px auto;padding:0 20px;color:#1d2420}
+    h1{color:#1c3f6e}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #c9ddd3;padding:5px 8px;text-align:right}
+    th{background:#eef5f1}td:first-child{text-align:center}.raiz{font-size:20px}</style></head><body>
+    <h1>Método de la Secante</h1>
+    <p><b>f(x)</b> = ${funcionHTML(r.funcion)} &nbsp; <b>a</b> = ${r.a} &nbsp; <b>b</b> = ${r.b} &nbsp; <b>error</b> = ${r.error}</p>
+    <p><b>Cambio de signo:</b> f(a) = ${v(r.fa)} (acheck = ${r.acheck ? "verdadero" : "falso"}), f(b) = ${v(r.fb)} (bcheck = ${r.bcheck ? "verdadero" : "falso"}) → ${r.cambio_de_signo ? "sí hay cambio de signo" : "no hay cambio de signo"}.</p>
+    <p><b>Fórmula:</b> x<sub>k+1</sub> = (a·f(b) − b·f(a)) / (f(b) − f(a)) &nbsp;&nbsp; <b>Test de parada:</b> |f(x<sub>k+1</sub>)| &lt; error</p>
+    <table><tr><th>k</th><th>a</th><th>b</th><th>f(a)</th><th>f(b)</th><th>x<sub>k+1</sub></th><th>f(x<sub>k+1</sub>)</th><th>¿&lt; error?</th></tr>${filas}</table>
+    <p class="raiz">${r.encontrada ? `<b>Raíz ≈ ${v(r.raiz)}</b>` : ""}</p><p>${escapar(r.mensaje)}</p>
+    <script>window.onload = () => window.print();<\/script></body></html>`;
+  const ventana = window.open("", "_blank");
+  if (ventana) {
+    ventana.document.write(informe);
+    ventana.document.close();
+    avisar("Informe abierto: elegí «Guardar como PDF» para guardarlo.");
+  }
 }));
 
 // ======================================================================
-//  Formulario, criterio y teclado matemático
+//  Formulario y teclado matemático
 // ======================================================================
 
-form.addEventListener("submit", (e) => {
+$("#formulario").addEventListener("submit", (e) => {
   e.preventDefault();
   resolver();
 });
 
-campo("funcion").addEventListener("input", demorar(analizarFuncion, 220));
+let temporizadorVista;
+campo("funcion").addEventListener("input", () => {
+  clearTimeout(temporizadorVista);
+  temporizadorVista = setTimeout(vistaPrevia, 150);
+});
 ["x0", "x1", "tolerancia"].forEach((id) => campo(id).addEventListener("input", () => {
   const c = $(`.campo[data-campo="${id}"]`);
   c.classList.remove("con-error");
@@ -569,23 +545,15 @@ campo("funcion").addEventListener("input", demorar(analizarFuncion, 220));
   if (estado.datos) invalidarResultado();
 }));
 
-// El criterio de parada se elige en la cabecera del cuadro del error.
-// Al cambiarlo se vuelve a resolver, porque cambia en qué iteración se detiene.
-campo("criterio").addEventListener("change", () => {
-  actualizarUnidadError();
-  if (estado.datos) resolver();
-});
-
 campo("decimales").addEventListener("change", (e) => {
   estado.decimales = parseInt(e.target.value, 10);
-  if (estado.datos) {
-    renderTablas(estado.datos);   // incluye el cambio de signo
-    renderComparacion(estado.datos);
-    pasos.actualizarDecimales(estado.decimales);
-    animacion.decimales = estado.decimales;
-    animacion._renderExplicacion();
-    animacion._actualizarSubpasos();
-  }
+  if (!estado.datos) return;
+  renderTablas(estado.datos);
+  renderComparacion(estado.datos);
+  pasos.actualizarDecimales(estado.decimales);
+  animacion.decimales = estado.decimales;
+  animacion._renderExplicacion();
+  animacion._actualizarSubpasos();
 });
 
 $("#teclado").addEventListener("click", (e) => {
@@ -608,7 +576,7 @@ $("#teclado").addEventListener("click", (e) => {
   input.dispatchEvent(new Event("input"));
 });
 
-// Atajos del paso a paso y de la animación: espacio = reproducir/pausar, flechas = avanzar/retroceder
+// Atajos: espacio = reproducir/pausar, flechas = avanzar/retroceder
 document.addEventListener("keydown", (e) => {
   const activa = pestanaActiva();
   const control = activa === "pasos" ? pasos : activa === "animacion" ? animacion : null;
@@ -619,7 +587,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft" && !e.target.closest("[role=tablist]")) { e.preventDefault(); control.retroceder(); }
 });
 
-// Fila de la tabla -> esa iteración paso a paso
+// Fila de la tabla -> esa iteración en el paso a paso
 $("#tabla-iteraciones tbody").addEventListener("click", (e) => {
   const fila = e.target.closest("tr[data-i]");
   if (!fila) return;
@@ -659,6 +627,6 @@ $("#btn-salir").addEventListener("click", async () => {
 //  Inicio
 // ======================================================================
 
-cargarHistorial();
-cargarEnFormulario({ funcion: "x^3 - 4x - 1", x0: "2", x1: "3" });
+renderHistorial();
+cargarEnFormulario({ funcion: "x^3 - 4x - 1", a: "2", b: "3", error: "0.0001" });
 document.fonts?.ready.then(() => redibujarTodos());
