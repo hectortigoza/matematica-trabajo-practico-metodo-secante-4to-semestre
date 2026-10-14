@@ -207,7 +207,7 @@ export class PasoAPaso {
       const valoresTest = {
         k: fila.k,
         fx: numHTML(fila.fx, d),
-        cmp: fila.cumple ? `|f| &lt; ${r.error} <b>→ es la raíz</b>` : `|f| ≥ ${r.error} → sigue`,
+        cmp: fila.cumple ? `menor <b>→ es la raíz</b>` : `mayor → k = k + 1`,
       };
       const cumple = fila.cumple && llenas.has(`t${i}:cmp`) ? "final" : "";
       filasTest.push(`<tr class="${enCurso} ${cumple}">${COLUMNAS_TEST.map((col) => {
@@ -290,12 +290,12 @@ export class PasoAPaso {
         cuerpo = bloque("Condición", `|<i>f</i>(${X})| &lt; error`) +
           bloque("Reemplazo", `${chip(c(Math.abs(f.fx)), "e")} &lt; ${r.error}`);
         if (f.cumple) {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">Sí → ${xk1(k)} = ${v(f.x)} es la raíz</span>`, "resultado cumple");
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">|f(${xk1(k)})| es menor al error → ${xk1(k)} = ${v(f.x)} es la raíz</span>`, "resultado cumple");
         } else if (paso.ultima) {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">No</span>`, "resultado");
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">|f(${xk1(k)})| es mayor al error</span>`, "resultado");
           nota = escapar(r.mensaje);
         } else {
-          cuerpo += bloque("Resultado", `<span class="resultado-paso">No → se pasa a k = ${k + 1}</span>`, "resultado");
+          cuerpo += bloque("Resultado", `<span class="resultado-paso">|f(${xk1(k)})| es mayor al error → k = k + 1 = ${k + 1}</span>`, "resultado");
         }
         if (!nota) nota = "El resultado de la comparación se carga en la última columna.";
       }
