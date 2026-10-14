@@ -23,7 +23,8 @@ Se abre el navegador con la interfaz. Para cerrar el programa, usá el botón **
 **Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
 
 - **Método de la secante** que itera hasta alcanzar el error pedido, con tres criterios de parada elegibles desde la cabecera del cuadro del error (|xₙ₊₁ − xₙ|, relativo % y |f(xₙ₊₁)|), y detección de división por cero, divergencia y salida del dominio.
-- **Paso a paso de la tabla**: arranca con los valores iniciales y, celda por celda, muestra la fórmula, el reemplazo y el resultado de f(xₙ₋₁), f(xₙ), xₙ₊₁ y del error, y la comparación con el error pedido.
+- **Paso a paso de la tabla**: arranca con los valores iniciales y, celda por celda, muestra la fórmula, el reemplazo y el resultado de f(xₙ₋₁), f(xₙ), xₙ₊₁ y del error, y la comparación con el error pedido. Las celdas que se usan se pintan de colores.
+- **Animación** del método sobre la gráfica: la recta secante, su corte con el eje x y el error de cada iteración.
 - **Análisis de convergencia**: error en escala logarítmica, orden estimado (≈ φ = 1.618), cifras significativas (Scarborough) y conclusiones automáticas.
 - **Comparación automática** con Newton-Raphson (derivada simbólica propia), falsa posición y bisección.
 - **Teorema de Bolzano** y detección de asíntotas en el análisis y en el informe.

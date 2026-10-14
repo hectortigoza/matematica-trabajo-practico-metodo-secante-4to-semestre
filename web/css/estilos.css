@@ -25,6 +25,13 @@
   --ocre-suave: #fbf0dc;
   --sombra: 0 1px 0 rgba(28, 63, 110, 0.04), 0 8px 24px -14px rgba(28, 63, 110, 0.25);
   --texto-sobre-tinta: #ffffff;
+  /* Colores del paso a paso: uno por columna de la tabla */
+  --c-a: #2563c9;   /* xₙ₋₁ */
+  --c-b: #7c3aed;   /* xₙ */
+  --c-c: #c2620c;   /* f(xₙ₋₁) */
+  --c-d: #15803d;   /* f(xₙ) */
+  --c-r: #c8323c;   /* xₙ₊₁ */
+  --c-e: #be185d;   /* error */
 
   --fuente-ui: "Archivo", "Segoe UI", system-ui, sans-serif;
   --fuente-mat: "STIX Two Text", "Cambria Math", "Cambria", Georgia, serif;
@@ -56,6 +63,7 @@
     --ocre-suave: rgba(242, 184, 75, 0.14);
     --sombra: 0 10px 30px -18px rgba(0, 0, 0, 0.6);
     --texto-sobre-tinta: #0d2742;
+    --c-a: #7fb0ff; --c-b: #c4a5ff; --c-c: #ffb36b; --c-d: #6fd39b; --c-r: #ff7d6e; --c-e: #ff8fc4;
     color-scheme: dark;
   }
 }
@@ -81,6 +89,7 @@
   --ocre-suave: rgba(242, 184, 75, 0.14);
   --sombra: 0 10px 30px -18px rgba(0, 0, 0, 0.6);
   --texto-sobre-tinta: #0d2742;
+  --c-a: #7fb0ff; --c-b: #c4a5ff; --c-c: #ffb36b; --c-d: #6fd39b; --c-r: #ff7d6e; --c-e: #ff8fc4;
   color-scheme: dark;
 }
 
@@ -1037,7 +1046,6 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
   30% { opacity: 1; background: var(--lapiz-suave); box-shadow: inset 0 0 0 2px var(--lapiz); }
   100% { opacity: 1; background: var(--lapiz-suave); box-shadow: inset 0 0 0 2px var(--lapiz); }
 }
-.tabla-pasos td.recien { animation: celda-carga 0.8s ease 1.9s both; font-weight: 600; }
 .tabla-pasos tbody tr { cursor: default; }
 .tabla-pasos tbody tr:hover { background: none; }
 .tabla-pasos tr.en-curso td { background: color-mix(in srgb, var(--hoja-alterna) 70%, transparent); }
@@ -1045,6 +1053,78 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 
 @media (max-width: 640px) {
   .paso-bloque { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* --------------------------------------------------------------------------
+   Paso a paso en grande, con las celdas que se usan pintadas de colores
+   -------------------------------------------------------------------------- */
+
+.c-a { --color: var(--c-a); }
+.c-b { --color: var(--c-b); }
+.c-c { --color: var(--c-c); }
+.c-d { --color: var(--c-d); }
+.c-r { --color: var(--c-r); }
+.c-e { --color: var(--c-e); }
+.c-cmp { --color: var(--tinta-suave); }
+
+/* Número en la fórmula: lleva el color de la celda de donde se tomó */
+.chip {
+  color: var(--color);
+  background: color-mix(in srgb, var(--color) 14%, transparent);
+  border-bottom: 2px solid var(--color);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 600;
+}
+.sim { color: var(--color); font-weight: 600; }
+
+/* Celdas que se están usando en este paso */
+@keyframes celda-usa {
+  0% { box-shadow: inset 0 0 0 0 var(--color); }
+  50% { box-shadow: inset 0 0 0 4px var(--color); }
+  100% { box-shadow: inset 0 0 0 3px var(--color); }
+}
+.tabla-pasos td.usa {
+  color: var(--color);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color) 16%, var(--hoja));
+  box-shadow: inset 0 0 0 3px var(--color);
+  animation: celda-usa 0.7s ease both;
+}
+/* Celda que recibe el resultado: aparece después de mostrar el cálculo */
+@keyframes celda-carga2 {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+.tabla-pasos td.carga {
+  color: var(--color);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--color) 10%, var(--hoja));
+  box-shadow: inset 0 0 0 2px var(--color);
+}
+.tabla-pasos td.carga.animar { animation: celda-carga2 0.5s ease 1.9s both; }
+
+/* Todo en grande */
+#vista-pasos .tabla-pasos { font-size: 1.12rem; }
+#vista-pasos .tabla-pasos thead th { font-size: 1.15rem; height: 54px; }
+#vista-pasos .tabla-pasos tbody td { height: 52px; padding: 8px 14px; }
+#vista-pasos .explicacion { padding: 22px 26px; }
+#vista-pasos .explicacion-cabecera h2 { font-size: 1.6rem; }
+#vista-pasos .paso-bloque { grid-template-columns: 130px minmax(0, 1fr); padding: 8px 16px; }
+#vista-pasos .paso-etiqueta { font-size: 0.9rem; }
+#vista-pasos .paso-bloque .formula-paso { font-size: 1.5rem; line-height: 2.3; }
+#vista-pasos .paso-nota { font-size: 0.98rem; }
+#vista-pasos .cuadros { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+
+/* --------------------------------------------------------------------------
+   Animación sobre la gráfica (pestaña "Animación")
+   -------------------------------------------------------------------------- */
+
+.animacion { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; align-items: start; }
+.explicacion-anim { position: sticky; top: 88px; display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 1180px) {
+  .animacion { grid-template-columns: 1fr; }
+  .explicacion-anim { position: static; }
 }
 
 /* --------------------------------------------------------------------------

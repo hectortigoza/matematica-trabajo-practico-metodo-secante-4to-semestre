@@ -61,7 +61,9 @@ app.py             ← Arranca todo
 Queremos encontrar r tal que **f(r) = 0**. Tenemos dos puntos de la curva: (x₀, f(x₀)) y (x₁, f(x₁)).
 Trazamos la **recta que pasa por esos dos puntos** (la secante) y miramos **dónde corta al eje x**. Ese punto es x₂, una mejor aproximación de la raíz. Después repetimos con x₁ y x₂, y así sucesivamente.
 
-![Paso a paso: la fórmula de la secante, el reemplazo y el resultado x₃, que se carga en la tabla](capturas/03-paso-a-paso.png)
+![Paso a paso: para calcular x₃ se usan las cuatro celdas pintadas; cada número del reemplazo tiene el color de su celda](capturas/03-paso-a-paso.png)
+
+![Animación: la secante (roja punteada) corta al eje x en x₂](capturas/08-animacion.png)
 
 ### La fórmula (y de dónde sale)
 

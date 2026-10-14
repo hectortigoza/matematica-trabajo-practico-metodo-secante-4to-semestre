@@ -8,20 +8,29 @@
 //   4. Calcular el error         fórmula → reemplazo → resultado
 //   5. Comparar con el error pedido → seguir o detenerse
 //
+// En cada paso se PINTAN las celdas que se usan, y los mismos números aparecen
+// con el mismo color en el reemplazo de la fórmula:
+//   xₙ₋₁ azul · xₙ violeta · f(xₙ₋₁) naranja · f(xₙ) verde · xₙ₊₁ rojo · error magenta
+//
 // Todos los números vienen calculados desde Python; acá solo se muestran.
 
 import { numHTML, numCompacto, escapar } from "./formato.js";
 
 const DURACION_PASO = 3600;          // ms por paso a velocidad 1×
-const SUB = { "-": "₋", "+": "₊", 0: "₀", 1: "₁", 2: "₂", 3: "₃", 4: "₄", 5: "₅", 6: "₆", 7: "₇", 8: "₈", 9: "₉" };
 
 /** x con subíndice real: x(3) -> "x₃" en HTML con cursiva. */
 const x = (k) => `<i>x</i><sub>${k}</sub>`;
 const fx = (k) => `<i>f</i>(${x(k)})`;
 const frac = (a, b) => `<span class="m-frac"><span class="m-num-frac">${a}</span><span class="m-den">${b}</span></span>`;
-const subTexto = (k) => String(k).split("").map((c) => SUB[c] ?? c).join("");
 
 const COLUMNAS_TABLA = ["n", "xa", "xn", "fa", "fn", "xs"];
+// Color de cada columna (las clases c-a … c-e están en estilos.css)
+const COLOR_COLUMNA = { xa: "a", xn: "b", fa: "c", fn: "d", xs: "r", err: "e" };
+
+/** Número resaltado con el color de la celda de donde se toma. */
+const chip = (contenido, color) => `<span class="chip c-${color}">${contenido}</span>`;
+/** Símbolo de la fórmula (xₙ, f(xₙ)…) con el color de su columna. */
+const simbolo = (contenido, color) => `<span class="sim c-${color}">${contenido}</span>`;
 const COLUMNAS_ERROR = ["n", "err", "cmp"];
 
 export class PasoAPaso {
@@ -127,22 +136,28 @@ export class PasoAPaso {
     r.iteraciones.forEach((it, i) => {
       const fila = i;
       const celda = (col) => `${fila}:${col}`;
-      pasos.push({ iteracion: i, tipo: "cargar", it, llena: [celda("n"), celda("xa"), celda("xn"), `e${fila}:n`] });
-      pasos.push({ iteracion: i, tipo: "fa", it, llena: [celda("fa")] });
-      pasos.push({ iteracion: i, tipo: "fn", it, llena: [celda("fn")] });
-      pasos.push({ iteracion: i, tipo: "secante", it, llena: [celda("xs")] });
-      pasos.push({ iteracion: i, tipo: "error", it, llena: [`e${fila}:err`] });
-      pasos.push({ iteracion: i, tipo: "comparar", it, llena: [`e${fila}:cmp`], ultima: i === r.iteraciones.length - 1 });
+      const anterior = (col) => `${fila - 1}:${col}`;
+      // "usa": celdas que se toman para calcular (se pintan con su color)
+      pasos.push({ iteracion: i, tipo: "cargar", it, llena: [celda("n"), celda("xa"), celda("xn"), `e${fila}:n`],
+        usa: i === 0 ? {} : { [anterior("xn")]: "a", [anterior("xs")]: "b" } });
+      pasos.push({ iteracion: i, tipo: "fa", it, llena: [celda("fa")], usa: { [celda("xa")]: "a" } });
+      pasos.push({ iteracion: i, tipo: "fn", it, llena: [celda("fn")], usa: { [celda("xn")]: "b" } });
+      pasos.push({ iteracion: i, tipo: "secante", it, llena: [celda("xs")],
+        usa: { [celda("xa")]: "a", [celda("xn")]: "b", [celda("fa")]: "c", [celda("fn")]: "d" } });
+      pasos.push({ iteracion: i, tipo: "error", it, llena: [`e${fila}:err`],
+        usa: r.criterio === "residuo" ? { [celda("xs")]: "r" } : { [celda("xs")]: "r", [celda("xn")]: "b" } });
+      pasos.push({ iteracion: i, tipo: "comparar", it, llena: [`e${fila}:cmp`], usa: { [`e${fila}:err`]: "e" },
+        ultima: i === r.iteraciones.length - 1 });
     });
-    pasos.push({ iteracion: r.iteraciones.length, tipo: "final", llena: [] });
+    pasos.push({ iteracion: r.iteraciones.length, tipo: "final", llena: [], usa: {} });
     return pasos;
   }
 
   _nombreError() {
     const c = this.datos.resultado.criterio;
-    if (c === "relativo") return "Error relativo ε<sub>a</sub> %";
+    if (c === "relativo") return "Error ε<sub>a</sub> %";
     if (c === "residuo") return "Error |<i>f</i>(<i>x</i><sub>n+1</sub>)|";
-    return "Error E<sub>a</sub> = |<i>x</i><sub>n+1</sub> − <i>x</i><sub>n</sub>|";
+    return "Error E<sub>a</sub>";
   }
 
   /** Valor del error de una iteración según el criterio elegido. */
@@ -153,9 +168,9 @@ export class PasoAPaso {
     return it.error_absoluto;
   }
 
-  /** f(x) con x reemplazada por el valor: (2)³ − 4(2) − 1 */
-  _sustituir(valor) {
-    const v = `<span class="valor-a">(${numCompacto(valor, this.decimales)})</span>`;
+  /** f(x) con x reemplazada por el valor, pintado del color de su celda: (2)³ − 4(2) − 1 */
+  _sustituir(valor, color) {
+    const v = chip(`(${numCompacto(valor, this.decimales)})`, color);
     return this.datos.funcion.html.split('<i class="m-var">x</i>').join(v);
   }
 
@@ -200,7 +215,16 @@ export class PasoAPaso {
     const r = this.datos.resultado;
     const llenas = new Set();
     for (let k = 0; k <= this.actual; k++) this.pasos[k].llena.forEach((c) => llenas.add(c));
-    const nuevas = new Set(animar ? this.pasos[this.actual].llena : []);
+    const paso = this.pasos[this.actual];
+    const nuevas = new Set(paso.llena);
+    const usadas = paso.usa;
+    const claseCelda = (clave, col) => {
+      const clases = [];
+      if (usadas[clave]) clases.push("usa", `c-${usadas[clave]}`);
+      else if (nuevas.has(clave) && COLOR_COLUMNA[col]) clases.push("carga", `c-${COLOR_COLUMNA[col]}`, animar ? "animar" : "");
+      else if (nuevas.has(clave) && col === "cmp") clases.push("carga", "c-cmp", animar ? "animar" : "");
+      return clases.join(" ");
+    };
     const unidad = r.criterio === "relativo" ? " %" : "";
 
     const filasTabla = [];
@@ -215,10 +239,9 @@ export class PasoAPaso {
       };
       const celdas = COLUMNAS_TABLA.map((col) => {
         const clave = `${i}:${col}`;
-        const clase = [col === "xs" ? "col-nueva" : "", nuevas.has(clave) ? "recien" : ""].join(" ");
-        return `<td class="${clase}">${llenas.has(clave) ? valores[col] : ""}</td>`;
+        return `<td class="${claseCelda(clave, col)}">${llenas.has(clave) ? valores[col] : ""}</td>`;
       });
-      const enCurso = this.pasos[this.actual].iteracion === i ? "en-curso" : "";
+      const enCurso = paso.iteracion === i ? "en-curso" : "";
       filasTabla.push(`<tr class="${enCurso}">${celdas.join("")}</tr>`);
 
       const error = this._error(it);
@@ -226,12 +249,12 @@ export class PasoAPaso {
       const valoresError = {
         n: it.n,
         err: error === null ? "—" : numHTML(error, d) + unidad,
-        cmp: cumple ? `&lt; ${r.tolerancia}${unidad} <b>→ se detiene</b>` : `≥ ${r.tolerancia}${unidad} → sigue iterando`,
+        cmp: cumple ? `&lt; ${r.tolerancia}${unidad} <b>→ para</b>` : `≥ ${r.tolerancia}${unidad} → sigue`,
       };
       const celdasError = COLUMNAS_ERROR.map((col) => {
         const clave = `e${i}:${col}`;
         const clase = [col === "cmp" ? "comparacion" : "", col === "cmp" && cumple ? "cumple" : "",
-          nuevas.has(clave) ? "recien" : ""].join(" ");
+          claseCelda(clave, col)].join(" ");
         return `<td class="${clase}">${llenas.has(clave) ? valoresError[col] : ""}</td>`;
       });
       filasError.push(`<tr class="${enCurso} ${cumple && llenas.has(`e${i}:cmp`) ? "final" : ""}">${celdasError.join("")}</tr>`);
@@ -242,7 +265,7 @@ export class PasoAPaso {
     this.el.tablaError.querySelector("tbody").innerHTML = filasError.join("") || vacia(3);
   }
 
-  /** Cuadro superior: fórmula, reemplazo y resultado del paso actual. */
+  /** Cuadro superior: fórmula, reemplazo y resultado del paso actual, con colores. */
   _renderExplicacion(paso, animar) {
     const d = this.decimales;
     const r = this.datos.resultado;
@@ -265,57 +288,65 @@ export class PasoAPaso {
       const it = paso.it;
       const n = it.n;
       const ia = n - 1, in_ = n, is = n + 1;
+      // Símbolos con el color de su columna
+      const XA = simbolo(x(ia), "a"), XN = simbolo(x(in_), "b"), XS = simbolo(x(is), "r");
+      const FA = simbolo(fx(ia), "c"), FN = simbolo(fx(in_), "d");
 
       if (paso.tipo === "cargar") {
-        titulo = n === 1 ? "Cargar los valores iniciales" : "Correr los valores para la nueva iteración";
+        titulo = n === 1 ? "Cargar los valores iniciales" : "Correr los valores a la nueva fila";
         cuerpo = n === 1
-          ? bloque("Datos", `${x(0)} = ${v(it.x_anterior)} <span class="igual">y</span> ${x(1)} = ${v(it.x_actual)}`)
-          : bloque("Datos", `${x(ia)} = ${v(it.x_anterior)} <span class="igual">— era el x${subTexto(ia)} de la fila anterior</span>`) +
-            bloque("", `${x(in_)} = ${v(it.x_actual)} <span class="igual">— es el x${subTexto(in_)} calculado en la fila anterior</span>`);
+          ? bloque("Datos", `${XA} = ${chip(c(it.x_anterior), "a")} <span class="igual">y</span> ${XN} = ${chip(c(it.x_actual), "b")}`)
+          : bloque("Se toma", `el ${simbolo("x<sub>n</sub>", "a")} de la fila ${n - 1} → pasa a ser ${XA} = ${chip(c(it.x_anterior), "a")}`) +
+            bloque("Se toma", `el ${simbolo("x<sub>n+1</sub>", "b")} de la fila ${n - 1} → pasa a ser ${XN} = ${chip(c(it.x_actual), "b")}`);
         nota = n === 1
-          ? `Se cargan en las columnas <i>x</i><sub>n−1</sub> y <i>x</i><sub>n</sub> de la fila 1.`
+          ? "Se cargan en las columnas x<sub>n−1</sub> y x<sub>n</sub> de la fila 1."
           : `Se descarta el valor más viejo y los dos últimos se cargan en la fila ${n}.`;
       } else if (paso.tipo === "fa" || paso.tipo === "fn") {
         const esA = paso.tipo === "fa";
+        const color = esA ? "a" : "b";
+        const colorRes = esA ? "c" : "d";
         const k = esA ? ia : in_;
         const valor = esA ? it.x_anterior : it.x_actual;
         const resultado = esA ? it.f_anterior : it.f_actual;
         titulo = `Calcular ${fx(k)}`;
         cuerpo = bloque("Fórmula", `<i>f</i>(<i>x</i>) = ${this.datos.funcion.html}`) +
-          bloque("Reemplazo", `${fx(k)} = ${this._sustituir(valor)}`) +
-          bloque("Resultado", `<span class="resultado-paso">${fx(k)} = ${v(resultado)}</span>`, "resultado");
-        nota = `Se carga en la columna <i>f</i>(<i>x</i><sub>${esA ? "n−1" : "n"}</sub>) de la fila ${n}.`;
+          bloque("Reemplazo", `${simbolo(fx(k), colorRes)} = ${this._sustituir(valor, color)}`) +
+          bloque("Resultado", `${simbolo(fx(k), colorRes)} = ${chip(v(resultado), colorRes)}`, "resultado");
+        nota = `Se toma ${simbolo(x(k), color)} de la tabla y el resultado se carga en la columna f(x<sub>${esA ? "n−1" : "n"}</sub>).`;
       } else if (paso.tipo === "secante") {
         titulo = `Calcular ${x(is)} con la fórmula de la secante`;
-        cuerpo = bloque("Fórmula", `${x(is)} = ${x(in_)} − ${frac(`${fx(in_)} · (${x(in_)} − ${x(ia)})`, `${fx(in_)} − ${fx(ia)}`)}`) +
-          bloque("Reemplazo", `${x(is)} = ${c(it.x_actual)} − ${frac(`${p(it.f_actual)} · (${c(it.x_actual)} − ${p(it.x_anterior)})`, `${p(it.f_actual)} − ${p(it.f_anterior)}`)}`) +
-          bloque("Resultado", `<span class="resultado-paso">${x(is)} = ${v(it.x_siguiente)}</span>`, "resultado");
-        nota = `Se carga en la columna <i>x</i><sub>n+1</sub> de la fila ${n}.`;
+        cuerpo = bloque("Fórmula", `${XS} = ${XN} − ${frac(`${FN} · (${XN} − ${XA})`, `${FN} − ${FA}`)}`) +
+          bloque("Reemplazo", `${XS} = ${chip(c(it.x_actual), "b")} − ${frac(
+            `${chip(p(it.f_actual), "d")} · (${chip(c(it.x_actual), "b")} − ${chip(p(it.x_anterior), "a")})`,
+            `${chip(p(it.f_actual), "d")} − ${chip(p(it.f_anterior), "c")}`)}`) +
+          bloque("Resultado", `${XS} = ${chip(v(it.x_siguiente), "r")}`, "resultado");
+        nota = "Se toman los cuatro valores pintados de la fila y el resultado se carga en la columna x<sub>n+1</sub>.";
       } else if (paso.tipo === "error") {
         const crit = r.criterio;
+        const E = simbolo(crit === "relativo" ? "ε<sub>a</sub>" : crit === "residuo" ? "E" : "E<sub>a</sub>", "e");
         titulo = "Calcular el error";
         if (crit === "relativo") {
-          cuerpo = bloque("Fórmula", `ε<sub>a</sub> = ${frac(`|${x(is)} − ${x(in_)}|`, `|${x(is)}|`)} · 100`) +
-            bloque("Reemplazo", `ε<sub>a</sub> = ${frac(`|${c(it.x_siguiente)} − ${p(it.x_actual)}|`, `|${c(it.x_siguiente)}|`)} · 100`) +
-            bloque("Resultado", `<span class="resultado-paso">ε<sub>a</sub> = ${it.error_relativo === null ? "—" : v(it.error_relativo)} %</span>`, "resultado");
+          cuerpo = bloque("Fórmula", `${E} = ${frac(`|${XS} − ${XN}|`, `|${XS}|`)} · 100`) +
+            bloque("Reemplazo", `${E} = ${frac(`|${chip(c(it.x_siguiente), "r")} − ${chip(p(it.x_actual), "b")}|`, `|${chip(c(it.x_siguiente), "r")}|`)} · 100`) +
+            bloque("Resultado", `${E} = ${chip((it.error_relativo === null ? "—" : v(it.error_relativo)) + " %", "e")}`, "resultado");
         } else if (crit === "residuo") {
-          cuerpo = bloque("Fórmula", `E = |${fx(is)}|`) +
-            bloque("Reemplazo", `E = |${this._sustituir(it.x_siguiente)}|`) +
-            bloque("Resultado", `<span class="resultado-paso">E = |${v(it.f_siguiente)}| = ${v(Math.abs(it.f_siguiente))}</span>`, "resultado");
+          cuerpo = bloque("Fórmula", `${E} = |<i>f</i>(${XS})|`) +
+            bloque("Reemplazo", `${E} = |${this._sustituir(it.x_siguiente, "r")}|`) +
+            bloque("Resultado", `${E} = |${v(it.f_siguiente)}| = ${chip(v(Math.abs(it.f_siguiente)), "e")}`, "resultado");
         } else {
-          cuerpo = bloque("Fórmula", `E<sub>a</sub> = |${x(is)} − ${x(in_)}|`) +
-            bloque("Reemplazo", `E<sub>a</sub> = |${c(it.x_siguiente)} − ${p(it.x_actual)}|`) +
-            bloque("Resultado", `<span class="resultado-paso">E<sub>a</sub> = ${v(it.error_absoluto)}</span>`, "resultado");
+          cuerpo = bloque("Fórmula", `${E} = |${XS} − ${XN}|`) +
+            bloque("Reemplazo", `${E} = |${chip(c(it.x_siguiente), "r")} − ${chip(p(it.x_actual), "b")}|`) +
+            bloque("Resultado", `${E} = ${chip(v(it.error_absoluto), "e")}`, "resultado");
         }
-        nota = `Se carga en el cuadro de la comparativa del error, fila ${n}.`;
+        nota = "Se carga en el cuadro de la comparativa del error.";
       } else if (paso.tipo === "comparar") {
         const unidad = r.criterio === "relativo" ? " %" : "";
         const error = this._error(it);
-        const nombre = r.criterio === "relativo" ? "ε<sub>a</sub>" : r.criterio === "residuo" ? "E" : "E<sub>a</sub>";
+        const nombre = simbolo(r.criterio === "relativo" ? "ε<sub>a</sub>" : r.criterio === "residuo" ? "E" : "E<sub>a</sub>", "e");
         const cumple = paso.ultima && r.exitoso;
         titulo = "Comparar con el error pedido";
         cuerpo = bloque("Condición", `${nombre} &lt; error pedido`) +
-          bloque("Reemplazo", `${v(error)}${unidad} &lt; ${r.tolerancia}${unidad}`);
+          bloque("Reemplazo", `${chip(v(error) + unidad, "e")} &lt; ${r.tolerancia}${unidad}`);
         if (cumple && r.estado === "raiz_exacta") {
           cuerpo += bloque("Resultado", `<span class="resultado-paso">${fx(is)} = 0: raíz exacta → se detiene</span>`, "resultado cumple");
         } else if (cumple) {
@@ -326,7 +357,7 @@ export class PasoAPaso {
         } else {
           cuerpo += bloque("Resultado", `<span class="resultado-paso">No se cumple → se pasa a la iteración ${n + 1}</span>`, "resultado");
         }
-        if (!nota) nota = `Se carga en la columna de comparación, fila ${n}.`;
+        if (!nota) nota = "El resultado de la comparación se carga en la última columna.";
       }
     }
 

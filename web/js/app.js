@@ -3,6 +3,8 @@
 import { llamar } from "./api.js";
 import { numHTML, corto, escapar, reducirMovimiento } from "./formato.js";
 import { PasoAPaso } from "./pasos.js";
+import { Lienzo } from "./lienzo.js";
+import { Animacion } from "./animacion.js";
 import { graficoLineas, redibujarTodos } from "./lineas.js";
 
 const $ = (sel, raiz = document) => raiz.querySelector(sel);
@@ -24,7 +26,8 @@ const COLORES_METODO = { "Secante": "lapiz", "Newton-Raphson": "tinta", "Falsa p
 const estado = {
   datos: null,            // última respuesta de /api/resolver
   decimales: 8,
-  autoplayPendiente: false,
+  autoplayPendiente: false,           // paso a paso
+  autoplayAnimacionPendiente: false,  // animación sobre la gráfica
 };
 
 // ======================================================================
@@ -47,6 +50,19 @@ const pasos = new PasoAPaso({
   inicio: $("#paso-inicio"),
   fin: $("#paso-fin"),
   velocidad: $("#velocidad"),
+});
+
+// Animación del método sobre la gráfica (pestaña "Animación")
+const lienzoAnimacion = new Lienzo($("#grafico-animacion"));
+const animacion = new Animacion(lienzoAnimacion, {
+  explicacion: $("#anim-explicacion"),
+  lineaTiempo: $("#anim-linea-tiempo"),
+  reproducir: $("#anim-reproducir"),
+  anterior: $("#anim-anterior"),
+  siguiente: $("#anim-siguiente"),
+  inicio: $("#anim-inicio"),
+  fin: $("#anim-fin"),
+  velocidad: $("#anim-velocidad"),
 });
 
 // ======================================================================
@@ -188,6 +204,7 @@ async function resolver() {
 
   estado.datos = r;
   estado.autoplayPendiente = true;
+  estado.autoplayAnimacionPendiente = true;
   renderizarTodo();
   const contenido = $("#resultado-contenido");
   contenido.classList.remove("revelar");
@@ -199,6 +216,7 @@ async function resolver() {
 function invalidarResultado() {
   estado.datos = null;
   pasos.pausar();
+  animacion.pausar();
   $("#resultado-contenido").hidden = true;
   $("#resolver-vacio").hidden = false;
   $$("[data-sin-datos]").forEach((el) => { el.hidden = false; });
@@ -217,7 +235,9 @@ function renderizarTodo() {
   renderConvergencia(d);
   renderComparacion(d);
   pasos.cargar(d, estado.decimales);
+  animacion.cargar(d, estado.decimales);
   if (pestanaActiva() === "pasos") iniciarAutoplay();
+  if (pestanaActiva() === "animacion") iniciarAnimacion();
 }
 
 /** Valor del error según el criterio elegido en la cabecera del cuadro. */
@@ -375,6 +395,8 @@ function activarPestana(nombre) {
   }
   if (nombre === "pasos") iniciarAutoplay();
   else pasos.pausar();
+  if (nombre === "animacion") iniciarAnimacion();
+  else animacion.pausar();
   if (nombre === "historial") cargarHistorial();
   requestAnimationFrame(redibujarTodos);
 }
@@ -383,6 +405,12 @@ function iniciarAutoplay() {
   if (!estado.datos || !estado.autoplayPendiente) return;
   estado.autoplayPendiente = false;
   if (!reducirMovimiento.matches) setTimeout(() => pasos.reproducir(), 350);
+}
+
+function iniciarAnimacion() {
+  if (!estado.datos || !estado.autoplayAnimacionPendiente) return;
+  estado.autoplayAnimacionPendiente = false;
+  if (!reducirMovimiento.matches) setTimeout(() => animacion.reproducir(), 350);
 }
 
 pestanas.forEach((p, k) => {
@@ -503,6 +531,9 @@ campo("decimales").addEventListener("change", (e) => {
     renderTablas(estado.datos);
     renderComparacion(estado.datos);
     pasos.actualizarDecimales(estado.decimales);
+    animacion.decimales = estado.decimales;
+    animacion._renderExplicacion();
+    animacion._actualizarSubpasos();
   }
 });
 
@@ -526,13 +557,15 @@ $("#teclado").addEventListener("click", (e) => {
   input.dispatchEvent(new Event("input"));
 });
 
-// Atajos del paso a paso
+// Atajos del paso a paso y de la animación: espacio = reproducir/pausar, flechas = avanzar/retroceder
 document.addEventListener("keydown", (e) => {
-  if (pestanaActiva() !== "pasos" || !estado.datos) return;
+  const activa = pestanaActiva();
+  const control = activa === "pasos" ? pasos : activa === "animacion" ? animacion : null;
+  if (!control || !estado.datos) return;
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
-  if (e.key === " ") { e.preventDefault(); pasos.alternar(); }
-  else if (e.key === "ArrowRight" && !e.target.closest("[role=tablist]")) { e.preventDefault(); pasos.avanzar(); }
-  else if (e.key === "ArrowLeft" && !e.target.closest("[role=tablist]")) { e.preventDefault(); pasos.retroceder(); }
+  if (e.key === " ") { e.preventDefault(); control.alternar(); }
+  else if (e.key === "ArrowRight" && !e.target.closest("[role=tablist]")) { e.preventDefault(); control.avanzar(); }
+  else if (e.key === "ArrowLeft" && !e.target.closest("[role=tablist]")) { e.preventDefault(); control.retroceder(); }
 });
 
 // Fila de la tabla -> esa iteración paso a paso
@@ -555,10 +588,14 @@ $("#btn-tema").addEventListener("click", () => {
     : window.matchMedia("(prefers-color-scheme: dark)").matches;
   raiz.dataset.theme = oscuroAhora ? "light" : "dark";
   try { localStorage.setItem("tema", raiz.dataset.theme); } catch (err) { /* sin almacenamiento */ }
+  lienzoAnimacion.dibujar();
   redibujarTodos();
 });
 
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => redibujarTodos());
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  lienzoAnimacion.dibujar();
+  redibujarTodos();
+});
 
 $("#btn-salir").addEventListener("click", async () => {
   if (!confirm("¿Cerrar el programa? Se detendrá el servidor.")) return;
