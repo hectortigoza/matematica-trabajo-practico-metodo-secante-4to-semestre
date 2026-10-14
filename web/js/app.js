@@ -255,8 +255,8 @@ function renderTablas(r) {
       <td>${f.k}</td>
       <td>${numHTML(f.fx, dec)}</td>
       <td class="comparacion ${f.cumple ? "cumple" : ""}">${f.cumple
-        ? `${num(Math.abs(f.fx), dec)} es menor al error <b>→ es la raíz</b>`
-        : `${num(Math.abs(f.fx), dec)} es mayor al error → k = k + 1`}</td>
+        ? `menor <b>→ es la raíz</b>`
+        : `mayor → k = k + 1`}</td>
     </tr>`).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
 
   // Resultado final

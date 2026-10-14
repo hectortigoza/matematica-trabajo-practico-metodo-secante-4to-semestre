@@ -1176,3 +1176,48 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 
 /* Columna k angosta en el test de parada del paso a paso */
 #vista-pasos #pasos-error th:first-child { width: 56px; }
+
+/* --------------------------------------------------------------------------
+   Nada se desborda: la letra se ajusta al ancho y los textos largos
+   pasan a la línea siguiente en lugar de salirse del cuadro
+   -------------------------------------------------------------------------- */
+
+.tabla { font-size: clamp(0.72rem, 0.5rem + 0.45vw, 0.88rem); }
+.tabla th, .tabla td { padding-left: clamp(4px, 0.7vw, 10px); padding-right: clamp(4px, 0.7vw, 10px); }
+.tabla th { white-space: normal; }
+
+#vista-pasos .tabla-pasos { font-size: clamp(0.78rem, 0.45rem + 0.65vw, 1.12rem); table-layout: auto; }
+#vista-pasos .tabla-pasos thead th { font-size: clamp(0.85rem, 0.5rem + 0.6vw, 1.15rem); }
+#vista-pasos .tabla-pasos tbody td { padding-left: clamp(4px, 0.8vw, 14px); padding-right: clamp(4px, 0.8vw, 14px); }
+
+.paso-bloque .formula-paso { white-space: normal; overflow-wrap: anywhere; }
+#vista-pasos .paso-bloque .formula-paso { font-size: clamp(1rem, 0.65rem + 0.85vw, 1.5rem); }
+#vista-pasos .explicacion-cabecera h2 { font-size: clamp(1.2rem, 0.9rem + 0.7vw, 1.6rem); }
+.formula-signo { overflow-wrap: anywhere; }
+
+/* En pantallas medianas el test de parada va debajo de la tabla */
+@media (max-width: 1280px) {
+  .cuadros, #vista-pasos .cuadros { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  #vista-pasos .paso-bloque { grid-template-columns: 1fr; }
+}
+/* En el paso a paso la tabla va a todo el ancho y el test de parada debajo */
+#vista-pasos .cuadros { grid-template-columns: 1fr; }
+/* Celular: tablas más compactas para que entren las 6 columnas */
+@media (max-width: 520px) {
+  .tabla, #vista-pasos .tabla-pasos { font-size: 0.6rem; }
+  .tabla th, .tabla td, #vista-pasos .tabla-pasos tbody td { padding-left: 2px; padding-right: 2px; }
+  .hoja { padding-left: 12px; padding-right: 12px; }
+  .cuadro { padding-left: 8px; padding-right: 8px; }
+  .tabla-comparacion th:nth-child(2), .tabla-comparacion td:nth-child(2) { display: none; }
+  .tabla-comparacion .estado { padding: 2px 6px; font-size: 0.6rem; }
+}
+
+/* Columnas parejas en el paso a paso (k angosta) */
+#vista-pasos .tabla-pasos { table-layout: fixed; }
+#vista-pasos .tabla-pasos th:first-child { width: 64px; }
+#vista-pasos #pasos-error th:nth-child(2) { width: 30%; }
+@media (max-width: 520px) {
+  #vista-pasos .tabla-pasos th:first-child { width: 26px; }
+}
