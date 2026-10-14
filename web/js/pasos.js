@@ -121,7 +121,8 @@ export class PasoAPaso {
     tabla.forEach((fila, i) => {
       const celda = (col) => `${i}:${col}`;
       const anterior = (col) => `${i - 1}:${col}`;
-      pasos.push({ iteracion: i, tipo: "cargar", fila, llena: [celda("k"), celda("a"), celda("b"), `t${i}:k`],
+      pasos.push({ iteracion: i, tipo: "cargar", fila, anteriorA: i > 0 ? tabla[i - 1].a : null,
+        llena: [celda("k"), celda("a"), celda("b"), `t${i}:k`],
         usa: i === 0 ? {} : { [anterior("b")]: "a", [anterior("x")]: "b" } });
       pasos.push({ iteracion: i, tipo: "fa", fila, llena: [celda("fa")], usa: { [celda("a")]: "a" } });
       pasos.push({ iteracion: i, tipo: "fb", fila, llena: [celda("fb")], usa: { [celda("b")]: "b" } });
@@ -259,9 +260,11 @@ export class PasoAPaso {
         titulo = k === 0 ? "k = 0: cargar los valores iniciales" : `k = ${k}: correr los valores`;
         cuerpo = k === 0
           ? bloque("Datos", `${A} = ${chip(c(f.a), "a")} &nbsp; y &nbsp; ${B} = ${chip(c(f.b), "b")}`)
-          : bloque("a", `${A} toma el valor de b de la fila anterior → ${A} = ${chip(c(f.a), "a")}`) +
-            bloque("b", `${B} toma el valor de x de la fila anterior → ${B} = ${chip(c(f.b), "b")}`);
-        nota = k === 0 ? "Se cargan en las columnas a y b de la fila k = 0." : `Se cargan en la fila k = ${k}.`;
+          : bloque("Regla", `se descarta el valor más viejo: &nbsp;${A} ← b &nbsp;y&nbsp; ${B} ← x<sub>k+1</sub>`) +
+            bloque("a", `${A} toma el valor de b de la fila anterior → ${A} = ${chip(c(f.a), "a")}`) +
+            bloque("b", `${B} toma el valor de x<sub>k+1</sub> de la fila anterior → ${B} = ${chip(c(f.b), "b")}`);
+        nota = k === 0 ? "Se cargan en las columnas a y b de la fila k = 0."
+          : `Se cargan en la fila k = ${k}. El a anterior (${c(paso.anteriorA)}) ya no se usa.`;
       } else if (paso.tipo === "fa" || paso.tipo === "fb") {
         const esA = paso.tipo === "fa";
         const valor = esA ? f.a : f.b;

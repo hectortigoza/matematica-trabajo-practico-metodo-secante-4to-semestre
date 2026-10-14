@@ -300,6 +300,12 @@ Porque f(x) puede dar negativo. Por ejemplo, −5 es menor que 0.0001, pero no e
 **¿Qué pasa en la siguiente iteración?**
 a toma el valor de b, b toma el valor de x<sub>k+1</sub>, y k aumenta en 1.
 
+**¿Cuál es la regla para saber qué valor se mantiene?**
+En la secante no se elige: se descarta siempre el valor más viejo. a ← b y b ← x<sub>k+1</sub>. No se miran los signos.
+
+**¿Y en qué se diferencia de la falsa posición?**
+Usan la misma fórmula. La diferencia es la regla: la falsa posición mira el signo de f(x<sub>k+1</sub>) y conserva el extremo que mantiene el cambio de signo (si f(a) y f(x<sub>k+1</sub>) tienen signos distintos, b ← x<sub>k+1</sub>; si no, a ← x<sub>k+1</sub>). Por eso la falsa posición siempre encierra la raíz, y la secante es más rápida pero puede salirse del intervalo.
+
 **¿Hay un máximo de iteraciones?**
 El usuario no lo elige: se itera hasta llegar al error. Internamente hay un límite de 100 para que el programa no quede trabado si el método no converge.
 
