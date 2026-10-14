@@ -28,7 +28,7 @@
 | Servidor | `http.server` de la **biblioteca estándar** de Python | Conecta la interfaz con la lógica sin instalar nada. |
 | Gráficos | **Canvas 2D** (interfaz) y **SVG** generado en Python (informe) | Dibujados a mano, sin bibliotecas de gráficos. |
 | Ejecutable | **PyInstaller** | Empaqueta Python, el código y la interfaz en un solo `MetodoSecante.exe`. |
-| Pruebas | `unittest` (biblioteca estándar) | 42 pruebas automáticas. |
+| Pruebas | `unittest` (biblioteca estándar) | 47 pruebas automáticas. |
 | IDE | Visual Studio Code | — |
 | Control de versiones | Git + GitHub | — |
 | Tipografías | Archivo y STIX Two Text (licencia SIL OFL) | Incluidas en el proyecto: funciona **sin internet**. |
@@ -139,8 +139,11 @@ flowchart TD
 
 - **f debe ser continua** cerca de la raíz y, para que converja con el orden esperado, **derivable con f′(r) ≠ 0** y f″ continua.
 - Se necesitan **dos valores iniciales distintos** (x₀ ≠ x₁).
-- **No** es necesario que x₀ y x₁ encierren la raíz: f(x₀) y f(x₁) pueden tener el mismo signo. Esa es la diferencia principal con bisección y falsa posición.
-- Conviene que x₀ y x₁ estén **cerca de la raíz**. Si f(x₀)·f(x₁) < 0 y f es continua, el **teorema de Bolzano** garantiza al menos una raíz entre ambos. El sistema lo verifica e informa el resultado, pero no lo exige.
+- **Regla del sistema: debe haber cambio de signo entre x₀ y x₁**, es decir f(x₀)·f(x₁) < 0. Si f es continua, el **teorema de Bolzano** garantiza entonces al menos una raíz entre ambos. El sistema lo evalúa antes de resolver y muestra f(x₀)·f(x₁) con su reemplazo y resultado. **Si no hay cambio de signo, no resuelve la tabla** y pide otros valores iniciales. También lo rechaza si el cambio de signo se debe a una asíntota (por ejemplo 1/x en [−1, 2]) o si f no está definida en x₀ o x₁.
+- En teoría, la secante es un método **abierto** y **no necesita** que x₀ y x₁ encierren la raíz: el núcleo (`metodo_secante`) funciona igual sin cambio de signo. Exigirlo es una decisión del sistema para garantizar que la raíz buscada esté entre los valores iniciales.
+- Conviene que x₀ y x₁ estén **cerca de la raíz**.
+
+![Sin cambio de signo entre x₀ y x₁: el sistema lo informa y no resuelve la tabla](capturas/12-sin-cambio-de-signo.png)
 
 ### 2.5 Criterio de convergencia (orden φ ≈ 1.618)
 
@@ -287,7 +290,7 @@ MATEMATICA/
 │   ├── index.html, css/estilos.css
 │   ├── js/                   app.js (pantalla), pasos.js (paso a paso), animacion.js + lienzo.js (animación), lineas.js, …
 │   └── fuentes/              Tipografías incluidas (funciona sin internet)
-├── tests/                    42 pruebas automáticas
+├── tests/                    47 pruebas automáticas
 └── docs/                     Esta documentación, la guía del código y las capturas
 ```
 
@@ -431,6 +434,7 @@ Correspondencia con el punto 9 de la guía del trabajo práctico. El sistema **n
 | Valores no numéricos | x₀ = "abc" | "El valor inicial x₀ debe ser un número (se ingresó "abc")." |
 | Función mal escrita | `x^3 - 4x + sen(x` | "Falta cerrar un paréntesis ')'" (con el lugar subrayado en rojo) |
 | Variable desconocida | `x + y` | "No se reconoce 'y'. La función debe depender solo de x…" |
+| Sin cambio de signo | x₀ = 1, x₁ = 2 en x³ − 4x − 1 | "f(x₀)·f(x₁) = (−4)·(−1) = 4 > 0. No hay cambio de signo: no se resuelve la tabla." |
 | Intervalo incorrecto | x₀ = x₁ | "x₀ y x₁ deben ser distintos: la secante necesita dos puntos diferentes…" |
 | División por cero | f(xₙ) = f(xₙ₋₁) | "La recta secante es horizontal y no corta al eje x. Probá con otros valores iniciales." |
 | División por cero en f | 1/x en x = 0 | "f(x) no se puede evaluar en … División por cero" |
@@ -451,31 +455,32 @@ Además, el sistema **junta todos los errores a la vez** (no solo el primero) y 
 
 ### 6.1 Ejemplo del enunciado, verificado a mano
 
-**f(x) = x³ − 4x − 1, x₀ = 1, x₁ = 2, tolerancia 0.0001 (error absoluto)**
+**f(x) = x³ − 4x − 1, error pedido 0.0001 (error absoluto)**
 
-Iteración 1, a mano:
-- f(1) = 1 − 4 − 1 = −4
-- f(2) = 8 − 8 − 1 = −1
-- x₂ = 2 − (−1)·(2 − 1) / (−1 − (−4)) = 2 + 1/3 = **2.33333333** ✔ (coincide con el sistema)
+El enunciado propone el intervalo [1, 2], pero ahí **no hay cambio de signo**: f(1) = −4 y f(2) = −1, f(1)·f(2) = 4 > 0. La raíz (2.1149…) está fuera de ese intervalo, así que el sistema no resuelve la tabla con [1, 2]. Se usa **x₀ = 2, x₁ = 3**:
+
+- Cambio de signo: f(2) = 8 − 8 − 1 = −1, f(3) = 27 − 12 − 1 = 14, f(2)·f(3) = −14 < 0 ✔
+- Iteración 1, a mano: x₂ = 3 − 14·(3 − 2) / (14 − (−1)) = 3 − 14/15 = **2.06666667** ✔ (coincide con el sistema)
 
 | n | xₙ₋₁ | xₙ | xₙ₊₁ | f(xₙ₊₁) | Eₐ | εₐ % |
 |---|---|---|---|---|---|---|
-| 1 | 1 | 2 | 2.33333333 | 2.37037037 | 0.33333333 | 14.28571429 |
-| 2 | 2 | 2.33333333 | 2.0989011 | −0.14913525 | 0.23443223 | 11.16928447 |
-| 3 | 2.33333333 | 2.0989011 | 2.11277767 | −0.02003138 | 0.01387658 | 0.65679298 |
-| 4 | 2.0989011 | 2.11277767 | 2.11493072 | 0.00021835 | 0.00215305 | 0.10180237 |
-| 5 | 2.11277767 | 2.11493072 | 2.11490751 | −3.1362·10⁻⁷ | 0.00002322 | 0.00109772 |
+| 1 | 2 | 3 | 2.06666667 | −0.4397037 | 0.93333333 | 45.16129032 |
+| 2 | 3 | 2.06666667 | 2.09508762 | −0.18418937 | 0.02842095 | 1.35655194 |
+| 3 | 2.06666667 | 2.09508762 | 2.11557507 | 0.00628994 | 0.02048745 | 0.96841047 |
+| 4 | 2.09508762 | 2.11557507 | 2.11489854 | −0.00008478 | 0.00067653 | 0.03198872 |
+| 5 | 2.11557507 | 2.11489854 | 2.11490754 | −3.8111·10⁻⁸ | 0.000009 | 0.00042543 |
 
-**Resultado:** raíz aproximada **2.114907508**, 5 iteraciones, error aproximado 2.32·10⁻⁵, estado: convergencia alcanzada.
+**Resultado:** raíz aproximada **2.11490754**, 5 iteraciones, error aproximado 9·10⁻⁶ < 0.0001, estado: convergencia alcanzada.
 Con una tolerancia más chica la raíz da 2.11490754148, que coincide con la raíz real de x³ − 4x − 1 = 0.
 
 ### 6.2 Batería de casos
 
-Tolerancia y criterio indicados; máximo 50 iteraciones. Las columnas de la derecha son la comparación automática.
+Comportamiento del **método** (núcleo `metodo_secante`) en distintos casos. Las columnas de la derecha son la comparación automática.
+Los casos marcados con ✗ **no tienen un cambio de signo válido** entre x₀ y x₁: **el sistema no los resuelve** y lo informa. Se incluyen porque las pruebas automáticas verifican cómo se comporta el método por sí solo.
 
 | f(x) | x₀, x₁ | Tol. | Estado | Iter. | Raíz | p estimado | Newton | Falsa pos. | Bisección |
 |---|---|---|---|---|---|---|---|---|---|
-| x³ − 4x − 1 | 1, 2 | 10⁻⁴ | Convergió | 5 | 2.114907508 | 1.545 | 3 | no aplica | no aplica |
+| ✗ x³ − 4x − 1 | 1, 2 | 10⁻⁴ | Convergió | 5 | 2.114907508 | 1.545 | 3 | no aplica | no aplica |
 | x³ − 4x − 1 | 2, 3 | 10⁻⁸ | Convergió | 6 | 2.114907541 | 1.525 | 6 | 19 | 27 |
 | x³ − 4x − 1 | −1, 0 | 10⁻⁴ | Convergió | 4 | −0.254101722 | 1.716 | 3 | 4 | 14 |
 | cos x − x | 0, 1 | 10⁻⁸ | Raíz exacta* | 6 | 0.739085133 | 1.599 | 4 | 8 | 27 |
@@ -483,11 +488,11 @@ Tolerancia y criterio indicados; máximo 50 iteraciones. Las columnas de la dere
 | x² − 2 | 1, 2 | 10⁻¹⁰ | Convergió | 7 | 1.414213562 (= √2) | 1.579 | 5 | 14 | 34 |
 | x·sen x − 1 | 0, 2 | 10⁻⁸ | Convergió | 5 | 1.114157141 | 0.688† | 6 | 5 | 28 |
 | ln x + x − 2 | 1, 3 | 10⁻⁸ | Raíz exacta* | 6 | 1.557145599 | 1.569 | 5 | 9 | 28 |
-| (x − 1)² | 0, 0.5 | 10⁻⁴ | Convergió (lento) | 17 | 0.999852 | **1.000** | 13 | no aplica | no aplica |
-| x² + 1 | 0, 1 | 10⁻⁴ | División por cero | — | sin raíz real | — | — | — | — |
-| x² − 4 | −1, 1 | 10⁻⁴ | División por cero | — | — | — | — | — | — |
-| 1/x | −1, 2 | 10⁻⁴ | Diverge | — | sin raíz | — | — | — | discontinuidad** |
-| ln x | −1, 2 | 10⁻⁴ | Fuera del dominio | — | — | — | — | — | — |
+| ✗ (x − 1)² | 0, 0.5 | 10⁻⁴ | Convergió (lento) | 17 | 0.999852 | **1.000** | 13 | no aplica | no aplica |
+| ✗ x² + 1 | 0, 1 | 10⁻⁴ | División por cero | — | sin raíz real | — | — | — | — |
+| ✗ x² − 4 | −1, 1 | 10⁻⁴ | División por cero | — | — | — | — | — | — |
+| ✗ 1/x | −1, 2 | 10⁻⁴ | Diverge | — | sin raíz | — | — | — | discontinuidad** |
+| ✗ ln x | −1, 2 | 10⁻⁴ | Fuera del dominio | — | — | — | — | — | — |
 
 \* "Raíz exacta" significa que f(xₙ₊₁) dio exactamente 0 en la aritmética de la computadora.
 † Con pocas iteraciones, y partiendo lejos de la raíz, la estimación de p no es confiable: la fórmula supone que ya estamos cerca de r.
@@ -497,11 +502,11 @@ Tolerancia y criterio indicados; máximo 50 iteraciones. Las columnas de la dere
 - En los casos de raíz simple con suficientes iteraciones, el orden estimado está entre 1.52 y 1.72, muy cerca del teórico φ ≈ 1.618.
 - En la raíz doble (x − 1)² el orden baja a 1.000: se confirma la limitación teórica.
 - La secante necesitó entre 3 y 5 veces menos iteraciones que la bisección.
-- En el primer caso, bisección y falsa posición **no se pueden aplicar** (no hay cambio de signo en [1, 2]), pero la secante igual encuentra la raíz: es la ventaja de un método abierto.
+- En [1, 2] no hay cambio de signo: bisección y falsa posición no se pueden aplicar, y el sistema tampoco resuelve la secante. Con [2, 3] (cambio de signo) los cuatro métodos llegan a la misma raíz.
 
 ### 6.3 Verificación con herramientas de referencia
 
-La carpeta `tests/` contiene **42 pruebas automáticas** (`python -m unittest discover -s tests -t .`) que verifican:
+La carpeta `tests/` contiene **47 pruebas automáticas** (`python -m unittest discover -s tests -t .`) que verifican:
 
 - Las funciones matemáticas propias contra el módulo `math`, en miles de puntos (error relativo < 10⁻¹²).
 - El parser: precedencia, multiplicación implícita y errores de sintaxis con su posición.
@@ -552,7 +557,7 @@ Extras no pedidos:
 ### Resolver un problema
 
 1. Escribir la función en **f(x) =**. Se aceptan `x^3 - 4x - 1`, `cos(x) - x`, `e^(-x) - x`, `2sin(x)`, `sqrt(x)`, `ln(x)`, `log(x)`, `pi`, `e`, etc. La multiplicación puede omitirse (`4x`).
-2. Ingresar los valores iniciales **x₀** y **x₁**.
+2. Ingresar los valores iniciales **x₀** y **x₁**, de modo que **f cambie de signo entre ellos** (si no, el sistema avisa y no resuelve).
 3. Ingresar el **error** pedido (por ejemplo 0.0001).
 4. Presionar **Resolver** (o Enter). Aparecen la **tabla** y, a la derecha, la **comparativa del error**.
 5. Para cambiar el **criterio de parada**, elegirlo en la cabecera del cuadro del error: el problema se vuelve a resolver solo.

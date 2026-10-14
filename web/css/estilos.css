@@ -1128,7 +1128,7 @@ output { float: right; font-variant-numeric: tabular-nums; color: var(--tinta); 
 }
 
 /* Cambio de signo (Bolzano) en la página Resolver */
-.cambio-signo { margin-bottom: 16px; border-left: 4px solid var(--verde); }
+.cambio-signo { border-left: 4px solid var(--verde); }
 .cambio-signo.alerta { border-left-color: var(--ocre); }
 .cambio-signo h2 { font-size: 1.15rem; margin-bottom: 6px; }
 .cambio-signo p, .cambio-signo ul { margin: 4px 0 0; }

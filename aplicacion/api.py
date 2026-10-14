@@ -50,14 +50,47 @@ def analizar_funcion(datos):
             "derivada_texto": derivada.texto, "derivada_html": derivada.html}
 
 
+class SinCambioDeSigno(Exception):
+    """f(x₀) y f(x₁) no tienen signos opuestos: el sistema no resuelve la tabla."""
+
+    def __init__(self, respuesta):
+        super().__init__("No hay cambio de signo entre x₀ y x₁")
+        self.respuesta = respuesta
+
+
+def _verificar_cambio_de_signo(problema):
+    """
+    Regla del sistema: solo se resuelve si hay cambio de signo entre x₀ y x₁,
+    es decir f(x₀)·f(x₁) < 0 (teorema de Bolzano: hay una raíz entre ellos).
+    También se acepta si x₀ o x₁ ya son raíz (f = 0).
+
+    El método de la secante en sí NO lo exige (es un método abierto), pero así
+    se garantiza que la raíz buscada está entre los valores iniciales.
+    """
+    f = problema.funcion
+    verificacion = analisis.verificar_intervalo(f, problema.x0, problema.x1)
+    if verificacion["cumple"]:
+        return verificacion
+    f_x0, f_x1 = f.evaluar_seguro(problema.x0), f.evaluar_seguro(problema.x1)
+    raise SinCambioDeSigno(limpiar({
+        "ok": True,
+        "sin_cambio_de_signo": True,
+        "funcion": {"texto": f.texto, "html": f.html},
+        "x0": problema.x0, "x1": problema.x1,
+        "f_x0": f_x0, "f_x1": f_x1,
+        "producto": None if f_x0 is None or f_x1 is None else f_x0 * f_x1,
+        "verificacion": verificacion,
+    }))
+
+
 def _resolver_completo(datos):
     """Resuelve y arma todos los datos que muestra la interfaz (o exporta)."""
     problema = validar_problema(datos)
     f = problema.funcion
+    verificacion = _verificar_cambio_de_signo(problema)
 
     resultado = metodo_secante(f, problema.x0, problema.x1, problema.tolerancia,
                                problema.max_iteraciones, problema.criterio)
-    verificacion = analisis.verificar_intervalo(f, problema.x0, problema.x1)
     estudio = analisis.analizar_resultado(resultado, verificacion)
     estudio["advertencias"] = problema.advertencias + estudio["advertencias"]
     desde, hasta = analisis.rango_sugerido(resultado)
@@ -81,6 +114,8 @@ def resolver(datos):
         respuesta = _resolver_completo(datos)
     except ErrorValidacion as error:
         return _error(error.errores)
+    except SinCambioDeSigno as aviso:
+        return aviso.respuesta          # se informa el cambio de signo, sin tabla
     try:
         historial.agregar(datos, respuesta["resultado"])
     except OSError:
@@ -131,6 +166,8 @@ def exportar_resultado(datos):
         completo = _resolver_completo(datos)
     except ErrorValidacion as error:
         return _error(error.errores)
+    except SinCambioDeSigno:
+        return _error([{"mensaje": "No hay cambio de signo entre x₀ y x₁: no hay resultado para exportar."}])
     tipo, extension, generar = exportar.FORMATOS[formato]
     decimales = int(datos.get("decimales") or 8)
     return {"ok": True, "contenido": generar(completo, decimales), "tipo": tipo,

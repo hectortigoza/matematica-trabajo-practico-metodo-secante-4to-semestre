@@ -81,22 +81,26 @@ Ecuación de la recta: y = f(xₙ) + m·(x − xₙ). Hacemos **y = 0** y despej
 
 ### El ejemplo del enunciado, a mano
 
-f(x) = x³ − 4x − 1, x₀ = 1, x₁ = 2, tolerancia = 0.0001
+f(x) = x³ − 4x − 1, x₀ = 2, x₁ = 3, error pedido = 0.0001
+
+**Antes de iterar: ¿hay cambio de signo?**
+- f(2) = 8 − 8 − 1 = −1, f(3) = 27 − 12 − 1 = 14
+- f(2)·f(3) = (−1)·14 = −14 < 0 → sí hay cambio de signo, hay una raíz entre 2 y 3. Se resuelve.
 
 **Iteración 1** (n = 1: usamos x₀ y x₁ para obtener x₂)
-- f(x₀) = f(1) = 1 − 4 − 1 = **−4**
-- f(x₁) = f(2) = 8 − 8 − 1 = **−1**
-- x₂ = 2 − (−1)·(2 − 1) / (−1 − (−4)) = 2 − (−1)/3 = **2.3333**
-- Error: Eₐ = |x₂ − x₁| = 0.3333 → es mayor que 0.0001, así que se sigue.
+- f(x₀) = f(2) = **−1**
+- f(x₁) = f(3) = **14**
+- x₂ = 3 − 14·(3 − 2) / (14 − (−1)) = 3 − 14/15 = **2.0667**
+- Error: Eₐ = |x₂ − x₁| = |2.0667 − 3| = 0.9333 → es mayor que 0.0001, así que se sigue.
 
-**Iteración 2** (usamos x₁ = 2 y x₂ = 2.3333; **se descarta x₀**)
-- f(2.3333) = 2.3704
-- x₃ = 2.3333 − 2.3704·(2.3333 − 2) / (2.3704 − (−1)) = **2.0989**
-- Eₐ = |2.0989 − 2.3333| = 0.2344 → se sigue.
+**Iteración 2** (usamos x₁ = 3 y x₂ = 2.0667; **se descarta x₀**)
+- f(2.0667) = −0.4397
+- x₃ = 2.0667 − (−0.4397)·(2.0667 − 3) / (−0.4397 − 14) = **2.0951**
+- Eₐ = |2.0951 − 2.0667| = 0.0284 → se sigue.
 
-…y así hasta la iteración 5, donde Eₐ = 0.0000232 < 0.0001 → **raíz ≈ 2.11490751**.
+…y así hasta la iteración 5, donde Eₐ = 0.000009 < 0.0001 → **raíz ≈ 2.11490754**.
 
-> ⚠️ Fijate que en [1, 2] **no hay cambio de signo** (f(1) = −4 y f(2) = −1, ambos negativos), y aun así la secante encuentra la raíz, que está en 2.1149, **afuera** del intervalo. Bisección no podría. Es una pregunta típica.
+> ⚠️ El enunciado propone [1, 2], pero ahí **no hay cambio de signo** (f(1) = −4 y f(2) = −1, ambos negativos): la raíz 2.1149 está **afuera** del intervalo. Por eso el sistema no lo resuelve. Es una pregunta típica.
 
 ![Última iteración: el error es menor al pedido y el método se detiene](capturas/04-paso-a-paso-error.png)
 
@@ -548,7 +552,7 @@ Ejecuta los cuatro métodos con **la misma tolerancia y criterio** y genera conc
 
 No es matemática, pero conviene saber qué hace cada archivo por si preguntan cómo se conecta todo:
 
-- **`api.py`**: una función por cada pedido de la pantalla (`resolver`, `analizar`, `muestrear`, `buscar`, `exportar`, `historial`). Recibe un diccionario y devuelve otro. `limpiar()` reemplaza NaN e infinito por `None`, porque JSON no los admite.
+- **`api.py`**: aplica la **regla del cambio de signo**: `_verificar_cambio_de_signo()` usa `verificar_intervalo` (Bolzano) y, si f(x₀)·f(x₁) no es negativo (o el cambio de signo es por una asíntota), no resuelve y devuelve solo la verificación para mostrarla. Además tiene una función por cada pedido de la pantalla (`resolver`, `analizar`, `muestrear`, `buscar`, `exportar`, `historial`). Recibe un diccionario y devuelve otro. `limpiar()` reemplaza NaN e infinito por `None`, porque JSON no los admite.
 - **`servidor.py`**: servidor web de la biblioteca estándar (`http.server`). Atiende `GET` (archivos de la interfaz) y `POST /api/...` (llama a `api.py`). Solo escucha en `127.0.0.1`, la propia computadora. Si algo inesperado falla, responde con un mensaje en lugar de caerse.
 - **`historial.py`**: guarda los ejercicios en `~/.metodo_secante/historial.json`. Escribe primero un archivo temporal y después lo reemplaza, para que el archivo nunca quede a medias.
 - **`exportar.py`**: genera el CSV (con `;` y coma decimal para Excel en español), el TXT y el **informe HTML**, que incluye un **gráfico SVG dibujado a mano** en Python.
@@ -562,10 +566,11 @@ No es matemática, pero conviene saber qué hace cada archivo por si preguntan c
 python -m unittest discover -s tests -t .
 ```
 
-Son **42 pruebas**, todas deben dar `OK`. Sirven para demostrar que *"los resultados fueron verificados"*, como pide la guía:
+Son **47 pruebas**, todas deben dar `OK`. Sirven para demostrar que *"los resultados fueron verificados"*, como pide la guía:
 
 - `test_matematica.py`: compara nuestro sen, cos, exp, ln, √… con el `math` de Python en miles de puntos. **Es el único lugar donde aparece `math`, y solo como referencia.**
 - `test_expresiones.py`: precedencia, multiplicación implícita, errores de sintaxis y derivadas. Las derivadas se comparan contra el cociente incremental (f(x+h) − f(x−h))/2h.
+- `test_api.py`: la regla del sistema: con cambio de signo se resuelve; sin cambio de signo (o con una asíntota) no se resuelve ni se exporta.
 - `test_secante.py`: la primera iteración hecha a mano, raíces conocidas (√2, 0.7390…, 0.5671…), cada estado de error, la validación, Bolzano, asíntotas, orden ≈ φ y la comparación.
 
 ---
@@ -582,7 +587,7 @@ Usan la misma fórmula. La falsa posición conserva el extremo que mantiene el c
 Porque una recta se define con dos puntos. Con uno solo no hay secante.
 
 **¿x₀ y x₁ tienen que encerrar la raíz?**
-No. Es un método abierto. En el ejemplo [1, 2] no hay cambio de signo y la raíz (2.1149) está afuera, pero igual la encuentra.
+En la teoría, no: la secante es un método abierto, y el núcleo (`metodo_secante`) encuentra la raíz aunque x₀ y x₁ no la encierren. Pero **nuestro sistema exige cambio de signo**: antes de resolver calcula f(x₀)·f(x₁) y, si no es negativo, no arma la tabla. Así se garantiza (por Bolzano) que la raíz buscada está entre los valores iniciales. Esa regla está en `aplicacion/api.py`, en `_verificar_cambio_de_signo()`.
 
 **¿Cuándo falla?**
 1) Si f(xₙ) = f(xₙ₋₁) hay división por cero (secante horizontal). 2) Si los valores iniciales están lejos, puede diverger. 3) Si la nueva aproximación cae fuera del dominio (ln de un negativo). 4) Con raíces múltiples converge lento. El sistema detecta e informa todos estos casos.
@@ -618,7 +623,7 @@ Si f es continua en [a, b] y f(a)·f(b) < 0, hay al menos una raíz en (a, b). L
 Unas 16 cifras significativas (doble precisión). Por eso no aceptamos tolerancias menores a 10⁻¹⁵, y si las aproximaciones dejan de cambiar, el sistema lo informa como "límite de precisión de la máquina".
 
 **Calculen a mano una iteración.**
-Con f(x) = x³ − 4x − 1, x₀ = 1, x₁ = 2: f(1) = −4, f(2) = −1, x₂ = 2 − (−1)(2−1)/(−1+4) = 2 + 1/3 = 2.3333. *Practíquenla.*
+Con f(x) = x³ − 4x − 1, x₀ = 2, x₁ = 3: f(2) = −1, f(3) = 14 (cambio de signo: (−1)·14 < 0), x₂ = 3 − 14(3−2)/(14+1) = 3 − 14/15 = 2.0667. *Practíquenla.*
 
 ---
 

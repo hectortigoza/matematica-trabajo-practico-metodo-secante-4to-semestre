@@ -14,13 +14,13 @@ Toda la matemática está implementada **desde cero en Python**, sin `math`, `nu
 | **Ejecutable (Windows)** | Doble clic en `ejecutable/MetodoSecante.exe`. No requiere instalar nada ni conexión a internet. |
 | **Desde el código** | `python app.py` (Python 3.10 o superior, sin dependencias externas). |
 | **Generar el ejecutable** | `python -m pip install pyinstaller` y luego `python construir_exe.py` → `dist/MetodoSecante.exe` |
-| **Pruebas** | `python -m unittest discover -s tests -t .` (42 pruebas) |
+| **Pruebas** | `python -m unittest discover -s tests -t .` (47 pruebas) |
 
 Se abre el navegador con la interfaz. Para cerrar el programa, usá el botón **Salir** o cerrá la ventana de la consola.
 
 ## Qué incluye
 
-**Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver se verifica si **hay cambio de signo** entre x₀ y x₁ (f(x₀)·f(x₁) < 0, teorema de Bolzano) y aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
+**Página de inicio:** se cargan la ecuación, los valores iniciales y el error. Al resolver se verifica si **hay cambio de signo** entre x₀ y x₁ (f(x₀)·f(x₁) < 0, teorema de Bolzano); si no lo hay, se informa y no se resuelve. Si lo hay, aparecen la **tabla** (a la izquierda) y la **comparativa del error** (a la derecha), donde se elige el criterio de parada.
 
 - **Método de la secante** que itera hasta alcanzar el error pedido, con tres criterios de parada elegibles desde la cabecera del cuadro del error (|xₙ₊₁ − xₙ|, relativo % y |f(xₙ₊₁)|), y detección de división por cero, divergencia y salida del dominio.
 - **Paso a paso de la tabla**: arranca con los valores iniciales y, celda por celda, muestra la fórmula, el reemplazo y el resultado de f(xₙ₋₁), f(xₙ), xₙ₊₁ y del error, y la comparación con el error pedido. Las celdas que se usan se pintan de colores.

@@ -202,6 +202,14 @@ async function resolver() {
     return;
   }
 
+  // Sin cambio de signo entre x₀ y x₁ no se resuelve la tabla: solo se informa
+  if (r.sin_cambio_de_signo) {
+    invalidarResultado();
+    $("#resolver-vacio").hidden = true;
+    renderCambioSigno(r, false);
+    return;
+  }
+
   estado.datos = r;
   estado.autoplayPendiente = true;
   estado.autoplayAnimacionPendiente = true;
@@ -218,6 +226,7 @@ function invalidarResultado() {
   pasos.pausar();
   animacion.pausar();
   $("#resultado-contenido").hidden = true;
+  $("#cambio-signo").hidden = true;
   $("#resolver-vacio").hidden = false;
   $$("[data-sin-datos]").forEach((el) => { el.hidden = false; });
   $$("[data-con-datos]").forEach((el) => { el.hidden = true; });
@@ -282,7 +291,7 @@ function renderTablas(d) {
   }).join("") || `<tr><td colspan="3" class="tenue" style="text-align:center">—</td></tr>`;
 
   // ---- Cambio de signo entre x₀ y x₁ (teorema de Bolzano)
-  renderCambioSigno(d);
+  renderCambioSigno({ f_x0: r.f_x0, f_x1: r.f_x1, verificacion: d.verificacion }, true);
 
   // ---- Resultado final
   const [clase, texto] = ESTADOS[r.estado] || ["alerta", r.estado];
@@ -303,31 +312,39 @@ function renderTablas(d) {
 /**
  * ¿Hay cambio de signo entre x₀ y x₁? Si f(x₀)·f(x₁) < 0 y f es continua,
  * por el teorema de Bolzano hay al menos una raíz entre ellos.
- * La secante no lo exige (es un método abierto), pero se informa.
+ * El sistema solo resuelve la tabla cuando hay cambio de signo.
+ *   datos = { f_x0, f_x1, verificacion }      resuelto = ¿se armó la tabla?
  */
-function renderCambioSigno(d) {
-  const r = d.resultado;
-  const v = d.verificacion;
+function renderCambioSigno(datos, resuelto) {
+  const v = datos.verificacion;
   const dec = estado.decimales;
   const caja = $("#cambio-signo");
   const par = (x) => (x < 0 ? `(${numHTML(x, dec)})` : numHTML(x, dec));
+  caja.hidden = false;
 
-  if (r.f_x0 === null || r.f_x1 === null || r.f_x0 === undefined || r.f_x1 === undefined) {
+  if (datos.f_x0 === null || datos.f_x0 === undefined || datos.f_x1 === null || datos.f_x1 === undefined) {
     caja.className = "hoja cambio-signo alerta";
-    caja.innerHTML = `<h2>Cambio de signo</h2><p>${escapar(r.mensaje)}</p>`;
+    caja.innerHTML = `<h2>¿Hay cambio de signo entre <i>x</i>₀ y <i>x</i>₁?</h2>
+      <p class="veredicto-signo">No se puede verificar</p>
+      <p>f(x) no está definida en x₀ o en x₁. Elegí valores iniciales dentro del dominio de la función.</p>`;
     return;
   }
 
-  const producto = r.f_x0 * r.f_x1;
+  const producto = datos.f_x0 * datos.f_x1;
   const signo = producto < 0 ? "&lt; 0" : producto > 0 ? "&gt; 0" : "= 0";
+  let veredicto;
+  if (v.cumple) veredicto = "Sí hay cambio de signo: hay una raíz entre x₀ y x₁, se resuelve la tabla.";
+  else if (producto < 0) veredicto = "El cambio de signo se debe a una discontinuidad, no a una raíz: no se resuelve la tabla.";
+  else veredicto = "No hay cambio de signo: no se resuelve la tabla.";
+
   caja.className = `hoja cambio-signo ${v.cumple ? "hay" : "alerta"}`;
   caja.innerHTML = `
     <h2>¿Hay cambio de signo entre <i>x</i>₀ y <i>x</i>₁?</h2>
     <p class="formula-signo">
-      <i>f</i>(<i>x</i>₀) · <i>f</i>(<i>x</i>₁) = ${par(r.f_x0)} · ${par(r.f_x1)} = <b>${numHTML(producto, dec)} ${signo}</b>
+      <i>f</i>(<i>x</i>₀) · <i>f</i>(<i>x</i>₁) = ${par(datos.f_x0)} · ${par(datos.f_x1)} = <b>${numHTML(producto, dec)} ${signo}</b>
     </p>
-    <p class="veredicto-signo">${v.cumple ? "Sí hay cambio de signo" : "No hay cambio de signo"}</p>
-    <p class="tenue">${escapar(v.mensaje)}</p>
+    <p class="veredicto-signo">${veredicto}</p>
+    ${resuelto ? "" : `<p class="tenue">Elegí valores iniciales x₀ y x₁ donde f(x) tenga signos opuestos, es decir, que la raíz quede entre ellos.</p>`}
     ${v.detalle.length ? `<ul class="tenue">${v.detalle.map((t) => `<li>${escapar(t)}</li>`).join("")}</ul>` : ""}`;
 }
 
@@ -643,5 +660,5 @@ $("#btn-salir").addEventListener("click", async () => {
 // ======================================================================
 
 cargarHistorial();
-cargarEnFormulario({ funcion: "x^3 - 4x - 1", x0: "1", x1: "2" });
+cargarEnFormulario({ funcion: "x^3 - 4x - 1", x0: "2", x1: "3" });
 document.fonts?.ready.then(() => redibujarTodos());
