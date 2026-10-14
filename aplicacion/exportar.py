@@ -23,13 +23,20 @@ ESTADOS = {
 
 
 def fmt(valor, decimales=8):
+    """Redondea a `decimales` como máximo y saca los ceros de más: 2.0 -> "2", 0.50 -> "0.5"."""
     if valor is None:
         return "—"
     if isinstance(valor, float) and not m.es_finito(valor):
         return "∞"
     if valor != 0 and (m.valor_absoluto(valor) < 10 ** -(decimales - 2) or m.valor_absoluto(valor) >= 1e9):
-        return "%.*e" % (max(decimales - 4, 3), valor)
-    return "%.*f" % (decimales, valor)
+        mantisa, exponente = ("%.*e" % (max(decimales - 4, 3), valor)).split("e")
+        if "." in mantisa:
+            mantisa = mantisa.rstrip("0").rstrip(".")
+        return mantisa + "e" + exponente
+    texto = "%.*f" % (decimales, valor)
+    if "." in texto:
+        texto = texto.rstrip("0").rstrip(".")
+    return "0" if texto == "-0" else texto
 
 
 # ==========================================================================

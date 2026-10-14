@@ -2,16 +2,23 @@
 
 const MENOS = "−";
 
-/** Número con `dec` decimales, o en notación científica si es muy chico o muy grande. */
+/**
+ * Número redondeado a `dec` decimales como máximo, sin ceros de más al final:
+ * 2 → "2", −4 → "−4", 2.333333333 → "2.33333333", 0.5 → "0.5".
+ * Si es muy chico o muy grande se usa notación científica.
+ */
 export function num(v, dec = 8) {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   if (!Number.isFinite(v)) return v > 0 ? "∞" : MENOS + "∞";
   const a = Math.abs(v);
   let s;
   if (v !== 0 && (a < Math.pow(10, -(dec - 2)) || a >= 1e9)) {
-    s = v.toExponential(Math.max(dec - 4, 3));
+    // 3.13620000e-7 -> 3.1362e-7
+    s = v.toExponential(Math.max(dec - 4, 3)).replace(/\.?0+e/, "e");
   } else {
     s = v.toFixed(dec);
+    if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    if (s === "-0") s = "0";
   }
   return s.replace("-", MENOS);
 }
