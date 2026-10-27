@@ -199,7 +199,6 @@ MATEMATICA/
 | **Resolver** | Ecuación, a, b y error. Al resolver: el cambio de signo (a → f(a) → positivo o negativo, y lo mismo con b), la **tabla** (k, a, b, f(a), f(b), x<sub>k+1</sub>) y al lado el **test de parada** (f(x<sub>k+1</sub>) y la comparación con el error). |
 | **Paso a paso** | La resolución de la tabla como la haría una persona: en cada iteración, la fórmula, el reemplazo y el resultado de f(a), f(b), x<sub>k+1</sub> y del test, con las celdas que se usan pintadas de colores. |
 | **Animación** | El método sobre la gráfica: la secante, su corte con el eje x y el test de cada iteración. |
-| **Convergencia** | Gráfico de |f(x<sub>k+1</sub>)| por iteración y orden de convergencia estimado. |
 | **Comparar métodos** | Secante contra Newton-Raphson, falsa posición y bisección. |
 | **Teoría** | Fórmula, algoritmo, ventajas y limitaciones. |
 | **Historial** | Ejercicios resueltos (guardados en el navegador). |
@@ -321,7 +320,6 @@ Con el mismo test de parada |f(x)| < 0.0001: la secante necesitó 4 iteraciones,
 | Sugerida en la guía | Implementación |
 |---|---|
 | Representación gráfica | Pestaña Animación: la función y las rectas secantes, con zoom y desplazamiento |
-| Gráficas de convergencia | |f(x<sub>k+1</sub>)| por iteración y orden de convergencia estimado |
 | Comparación automática | Secante, Newton-Raphson, falsa posición y bisección |
 | Visualización del error | Cuadro del test de parada y paso a paso con colores |
 | Exportación | Excel (CSV), texto e informe imprimible como PDF |
@@ -337,5 +335,5 @@ Con el mismo test de parada |f(x)| < 0.0001: la secante necesitó 4 iteraciones,
 3. Escribir los valores iniciales **a** y **b**, de modo que f cambie de signo entre ellos.
 4. Escribir el **error** (por ejemplo 0.0001).
 5. Tocar **Resolver**. Aparecen el cambio de signo, la tabla y el test de parada.
-6. Opcional: pestañas Paso a paso, Animación, Convergencia, Comparar métodos, Teoría e Historial.
+6. Opcional: pestañas Paso a paso, Animación, Comparar métodos, Teoría e Historial.
 7. Para cerrar: botón **Salir**.

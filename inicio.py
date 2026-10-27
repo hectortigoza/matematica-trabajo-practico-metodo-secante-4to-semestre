@@ -14,7 +14,7 @@ import os
 import sys
 import threading
 import webbrowser
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 
 import metodos
 
@@ -72,11 +72,13 @@ class Servidor(SimpleHTTPRequestHandler):
 def buscar_puerto_libre():
     # Si el puerto 8765 está ocupado, se prueba con el siguiente.
     # (En Windows, sin esta línea Python podría "compartir" un puerto ocupado)
-    HTTPServer.allow_reuse_address = False
+    ThreadingHTTPServer.allow_reuse_address = False
+    # La página pide muchos archivos juntos (estilos, scripts, letras): se atienden a la vez
+    ThreadingHTTPServer.request_queue_size = 64
     puerto = PUERTO
     while puerto < PUERTO + 20:
         try:
-            return HTTPServer(("127.0.0.1", puerto), Servidor)
+            return ThreadingHTTPServer(("127.0.0.1", puerto), Servidor)
         except OSError:
             puerto = puerto + 1
     raise OSError("No hay puertos libres")

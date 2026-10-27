@@ -41,7 +41,6 @@
       <button role="tab" id="tab-resolver" aria-controls="vista-resolver" aria-selected="true">Resolver</button>
       <button role="tab" id="tab-pasos" aria-controls="vista-pasos" aria-selected="false">Paso a paso</button>
       <button role="tab" id="tab-animacion" aria-controls="vista-animacion" aria-selected="false">Animación</button>
-      <button role="tab" id="tab-convergencia" aria-controls="vista-convergencia" aria-selected="false">Convergencia</button>
       <button role="tab" id="tab-comparacion" aria-controls="vista-comparacion" aria-selected="false">Comparar métodos</button>
       <button role="tab" id="tab-teoria" aria-controls="vista-teoria" aria-selected="false">Teoría</button>
       <button role="tab" id="tab-historial" aria-controls="vista-historial" aria-selected="false">Historial</button>
@@ -252,29 +251,6 @@
           </div>
         </div>
         <div class="hoja explicacion-anim" id="anim-explicacion" aria-live="polite"></div>
-      </div>
-    </section>
-
-    <!-- ---------- Convergencia ---------- -->
-    <section class="vista" id="vista-convergencia" role="tabpanel" aria-labelledby="tab-convergencia" hidden>
-      <div class="sin-datos" data-sin-datos><p>Resolvé un problema para analizar su convergencia.</p></div>
-      <div data-con-datos hidden>
-        <div class="dos-columnas">
-          <div class="hoja">
-            <h2>Test de parada por iteración</h2>
-            <p class="tenue">|f(x<sub>k+1</sub>)| en cada iteración, en escala logarítmica (cada línea es 10 veces más chica). Cuando baja del error pedido, se detiene.</p>
-            <div class="grafico-lineas"><canvas id="canvas-error"></canvas></div>
-          </div>
-          <div class="hoja">
-            <h2>Orden de convergencia estimado</h2>
-            <p class="tenue">p ≈ ln(e<sub>k+1</sub>/e<sub>k</sub>) / ln(e<sub>k</sub>/e<sub>k−1</sub>), con e<sub>k</sub> = |x<sub>k+1</sub> − b|. Para la secante, la teoría dice φ ≈ 1.618. Las primeras estimaciones, lejos de la raíz, son poco confiables.</p>
-            <div class="grafico-lineas"><canvas id="canvas-orden"></canvas></div>
-          </div>
-        </div>
-        <div class="hoja">
-          <h2>¿Converge? ¿Qué tan rápido?</h2>
-          <div id="texto-convergencia" class="prosa"></div>
-        </div>
       </div>
     </section>
 

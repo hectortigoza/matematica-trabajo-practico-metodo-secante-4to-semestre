@@ -17,7 +17,6 @@ const $ = (sel, raiz = document) => raiz.querySelector(sel);
 const $$ = (sel, raiz = document) => [...raiz.querySelectorAll(sel)];
 
 const COLORES_METODO = { "Secante": "lapiz", "Newton-Raphson": "tinta", "Falsa posición": "ocre", "Bisección": "verde" };
-const PHI = (1 + Math.sqrt(5)) / 2;
 
 const estado = {
   datos: null,                        // respuesta de Python (metodos.resolver_secante)
@@ -210,7 +209,6 @@ function renderizarTodo() {
 
   renderTablas(r);
   if (!r.tabla.length) return;              // a o b ya eran la raíz: no hay iteraciones
-  renderConvergencia(r);
   renderComparacion(r);
   pasos.cargar(r, estado.decimales);
   animacion.cargar(datosParaAnimacion(r), estado.decimales);
@@ -270,47 +268,6 @@ function renderTablas(r) {
   } else {
     final.innerHTML = `<span class="estado mal">Sin resultado</span><p class="tenue">${escapar(r.mensaje)}</p>`;
   }
-}
-
-// ======================================================================
-//  Convergencia (se calcula en la página)
-// ======================================================================
-
-function renderConvergencia(r) {
-  const errores = r.tabla.map((f) => Math.abs(f.x - f.b));
-  graficoLineas($("#canvas-error"), {
-    logY: true,
-    etiquetaX: "k",
-    referencia: { y: r.error, etiqueta: `error pedido = ${r.error}` },
-    series: [
-      { nombre: "|f(xₖ₊₁)|", color: "lapiz", puntos: r.tabla.map((f) => [f.k, Math.abs(f.fx)]) },
-      { nombre: "|xₖ₊₁ − b|", color: "tinta", puntos: r.tabla.map((f, i) => [f.k, errores[i]]), punteada: true },
-    ],
-  });
-
-  // Orden de convergencia: p ≈ ln(e(k+1)/e(k)) / ln(e(k)/e(k-1))
-  const estimaciones = [];
-  for (let i = 2; i < errores.length; i++) {
-    const [e0, e1, e2] = [errores[i - 2], errores[i - 1], errores[i]];
-    const ruido = 1e-13 * (1 + Math.abs(r.tabla[i].x));
-    let p = null;
-    if (e0 > 0 && e1 > ruido && e2 > ruido && e1 !== e0) p = Math.log(e2 / e1) / Math.log(e1 / e0);
-    estimaciones.push([r.tabla[i].k, p]);
-  }
-  graficoLineas($("#canvas-orden"), {
-    etiquetaX: "k",
-    limitesY: [-0.5, 3.5],
-    referencia: { y: PHI, etiqueta: "φ ≈ 1.618" },
-    series: [{ nombre: "p estimado", color: "lapiz", puntos: estimaciones }],
-  });
-
-  const validas = estimaciones.map(([, p]) => p).filter((p) => p !== null && p > 0 && p < 4).slice(-2);
-  const orden = validas.length ? validas.reduce((s, p) => s + p, 0) / validas.length : null;
-  const textos = [`<p><b>${r.encontrada ? "Converge." : "No converge."}</b> ${escapar(r.mensaje)}</p>`];
-  textos.push(orden !== null
-    ? `<p>Orden de convergencia estimado: <b>p ≈ ${orden.toFixed(3)}</b>. La teoría dice que la secante tiene orden φ = (1 + √5)/2 ≈ 1.618: en cada iteración las cifras correctas se multiplican por ≈ 1.6.</p>`
-    : "<p>Hacen falta al menos tres iteraciones para estimar el orden de convergencia.</p>");
-  $("#texto-convergencia").innerHTML = textos.join("");
 }
 
 // ======================================================================
