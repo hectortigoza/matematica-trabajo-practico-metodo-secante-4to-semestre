@@ -42,6 +42,17 @@ img { max-width: 100%; border: 1px solid #c9ddd3; border-radius: 4px; margin: 8p
 blockquote { margin: 10px 0; padding: 6px 14px; border-left: 3px solid #c8323c; background: #fbf3f3; color: #3a2a2a; }
 a { color: #1c3f6e; }
 hr { border: 0; border-top: 1px dashed #c9ddd3; margin: 20px 0; }
+.portada { text-align: center; page-break-after: always; padding-top: 18mm; }
+.portada p { margin: 0 0 6px; }
+.portada-institucion { font-size: 17pt; font-weight: bold; color: #1c3f6e; line-height: 1.35; }
+.portada-carrera { font-size: 13pt; margin-top: 6px !important; }
+.portada-asignatura { font-size: 13pt; font-weight: bold; margin-bottom: 30mm !important; }
+.portada-tipo { font-size: 11pt; text-transform: uppercase; letter-spacing: 1px; color: #4a5a52; }
+.portada-titulo { font-size: 24pt; font-weight: bold; color: #1c3f6e; line-height: 1.25; margin: 6px 0 10px !important; }
+.portada-grupo { font-size: 12pt; margin-bottom: 26mm !important; }
+.portada-etiqueta { font-size: 10pt; text-transform: uppercase; letter-spacing: 1px; color: #4a5a52; margin-top: 10px !important; }
+.portada-integrantes, .portada-docente { font-size: 12pt; line-height: 1.5; }
+.portada-fecha { font-size: 11pt; margin-top: 22mm !important; }
 """
 
 
@@ -61,10 +72,11 @@ def convertir(nombre):
     for i, codigo in enumerate(diagramas):
         html = html.replace("<p>MERMAID_%d</p>" % i, '<pre class="mermaid">%s</pre>' % codigo)
 
-    pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8"><style>%s</style>
+    titulo = re.search(r"^# (.+)$", texto, flags=re.M).group(1)
+    pagina = """<!doctype html><html lang="es"><head><meta charset="utf-8"><title>%s</title><style>%s</style>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad: true, theme: "neutral", flowchart: {useMaxWidth: true}});</script>
-</head><body>%s</body></html>""" % (ESTILO, html)
+</head><body>%s</body></html>""" % (titulo, ESTILO, html)
 
     ruta_html = os.path.join(CARPETA, "_" + nombre.replace(".md", ".html"))
     with open(ruta_html, "w", encoding="utf-8") as archivo:

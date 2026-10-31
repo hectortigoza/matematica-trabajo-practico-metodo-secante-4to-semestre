@@ -34,4 +34,4 @@ docs/          Documentación técnica y guía del código
 ## Documentación
 
 - [Guía del código](docs/GUIA_DEL_CODIGO.md): explicación simple de `inicio.py` y `metodos.py`, y preguntas para la defensa.
-- [Documentación técnica](docs/DOCUMENTACION_TECNICA.md): fundamento matemático, diseño, validaciones y casos de prueba (base del informe).
+- [Informe técnico](docs/DOCUMENTACION_TECNICA.md) ([PDF](docs/DOCUMENTACION_TECNICA.pdf)): portada, fundamento matemático, diseño, decisiones de implementación, validaciones, casos de prueba y análisis de la convergencia.

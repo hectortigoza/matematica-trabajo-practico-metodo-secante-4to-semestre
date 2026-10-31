@@ -1,8 +1,9 @@
 // comparacion.js — Otros métodos para comparar con la secante (se calculan en la página).
 // Todos usan el mismo test de parada que la secante: |f(x)| < error.
 
-const LIMITE = 100;
+const LIMITE = 100;   // igual que LIMITE_DE_ITERACIONES en metodos.py
 
+// Marca el resultado de un método como terminado (convergió o no) con su mensaje.
 function cerrar(r, exitoso, mensaje) {
   r.exitoso = exitoso;
   r.mensaje = mensaje;
@@ -10,10 +11,12 @@ function cerrar(r, exitoso, mensaje) {
   return r;
 }
 
+// Resultado vacío de un método: nombre, fórmula y la lista de iteraciones.
 function nuevo(metodo, descripcion) {
   return { metodo, descripcion, aplicable: true, exitoso: false, estado: "", mensaje: "", raiz: null, iteraciones: [] };
 }
 
+// Bisección: parte [a, b] a la mitad y se queda con la mitad donde f cambia de signo.
 export function biseccion(f, a, b, error) {
   const r = nuevo("Bisección", "c = (a + b) / 2");
   let fa = f(a);
@@ -31,6 +34,8 @@ export function biseccion(f, a, b, error) {
   return cerrar(r, false, "No converge.");
 }
 
+// Falsa posición: misma fórmula que la secante, pero reemplaza el extremo que
+// conserva el cambio de signo (la raíz queda siempre encerrada entre a y b).
 export function falsaPosicion(f, a, b, error) {
   const r = nuevo("Falsa posición", "c = (a·f(b) − b·f(a)) / (f(b) − f(a)), conservando el cambio de signo");
   let fa = f(a), fb = f(b);
@@ -48,6 +53,8 @@ export function falsaPosicion(f, a, b, error) {
   return cerrar(r, false, "No converge.");
 }
 
+// Newton-Raphson: usa la recta tangente. La derivada se aproxima con
+// diferencias centrales: f′(x) ≈ (f(x + h) − f(x − h)) / 2h.
 export function newtonRaphson(f, x, error) {
   const r = nuevo("Newton-Raphson", "xₖ₊₁ = xₖ − f(xₖ) / f′(xₖ)");
   for (let k = 0; k < LIMITE; k++) {

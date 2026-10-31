@@ -10,3 +10,4 @@ venv/
 *.log
 historial.json
 dist_nuevo/
+*.zip

@@ -1,8 +1,20 @@
-# Documentación técnica — Sistema de Cálculo Numérico: Método de la Secante
+<div class="portada">
+<p class="portada-institucion">Universidad Nacional del Este<br>Facultad Politécnica</p>
+<p class="portada-carrera">Análisis de Sistemas</p>
+<p class="portada-asignatura">Matemática IV — Cálculo Numérico</p>
+<p class="portada-tipo">Informe técnico del Trabajo Práctico Grupal</p>
+<p class="portada-titulo">Sistema de Cálculo Numérico:<br>Método de la Secante</p>
+<p class="portada-grupo">Grupo 1 — Secante</p>
+<p class="portada-etiqueta">Integrantes</p>
+<p class="portada-integrantes">COMPLETAR: Nombre Apellido<br>COMPLETAR: Nombre Apellido<br>COMPLETAR: Nombre Apellido<br>COMPLETAR: Nombre Apellido</p>
+<p class="portada-etiqueta">Docente</p>
+<p class="portada-docente">Prof. Lic. Alicia Castillo de Dechia</p>
+<p class="portada-fecha">4.º semestre — 2026<br>Ciudad del Este, Paraguay</p>
+</div>
 
-> Material base para el informe técnico del Trabajo Práctico de Matemática IV (Cálculo Numérico).
+# Informe técnico — Sistema de Cálculo Numérico: Método de la Secante
+
 > Sigue el orden que pide la guía del trabajo práctico (puntos 7, 8, 9, 11 y 16).
-> La portada (universidad, facultad, carrera, integrantes, docente, semestre) va en el informe final.
 
 ---
 
@@ -250,6 +262,21 @@ while not encontrada and k < LIMITE_DE_ITERACIONES:
     k = k + 1
 ```
 
+### 4.4 Decisiones de implementación
+
+| Decisión | Por qué |
+|---|---|
+| **Test de parada \|f(x<sub>k+1</sub>)\| < error** | Es el criterio visto en clase: se reemplaza x<sub>k+1</sub> en la función y se mira qué tan cerca de 0 queda. Mide directamente lo que se busca (f(x) = 0) y no necesita conocer la raíz. Se usa el valor absoluto porque f puede quedar negativa. En la sección 6.4 se analiza cuánto se aleja x de la raíz real con este criterio. |
+| **Verificar el cambio de signo antes de iterar** | La secante no lo exige, pero así el teorema de Bolzano garantiza que hay una raíz entre a y b, y el resultado es la raíz que el usuario está buscando y no otra lejana. Si no hay cambio de signo, el sistema avisa y no arma la tabla. |
+| **Si a o b ya son raíz, no se itera** | Si f(a) = 0 o f(b) = 0, la respuesta ya está y no hace falta armar la tabla. Se muestra directamente cuál de los dos es la raíz. |
+| **Controlar f(a) = f(b)** | La fórmula divide por f(b) − f(a). Antes de calcular x<sub>k+1</sub> se revisa que no sea 0 y se muestra un mensaje, en vez de dejar que el programa falle. |
+| **Límite interno de 100 iteraciones** | El usuario no elige un máximo de iteraciones: solo ingresa f, a, b y el error, como en clase. Pero si el método no converge, el ciclo no terminaría nunca. Como la secante converge con orden ≈ 1.618, un problema normal necesita menos de 10 iteraciones (sección 6.4). Llegar a 100 indica que no converge. |
+| **Avisar si la raíz queda fuera de [a, b]** | Una asíntota (por ejemplo 1/x en [−1, 2]) produce un cambio de signo sin raíz. Si el resultado queda fuera del intervalo inicial, el sistema lo advierte. |
+| **x<sub>k+1</sub> infinito o fuera del dominio** | Si la fórmula da infinito, o f no se puede calcular en x<sub>k+1</sub> (por ejemplo ln de un negativo), se corta con un mensaje claro en vez de mostrar un error de Python. |
+| **f(x) se calcula con Python, el método no** | Python solo se usa como calculadora para obtener f(x): `eval` con una lista cerrada de nombres (x, sin, cos, ln, sqrt, e, pi…). Cualquier otro nombre se rechaza. La fórmula, las iteraciones y el test de parada están programados a mano en `metodos.py`, como pide la guía. |
+| **Escritura natural de la función** | El usuario escribe como en el cuaderno: `x^3 - 4x - 1`, `2(x+1)`, coma decimal. `preparar_funcion` lo traduce a Python (`x**3-4*x-1`). |
+| **Cálculo en Python, interfaz web** | El método queda en un archivo corto y fácil de leer (`metodos.py`). La página permite la tabla, el paso a paso, la animación y los gráficos sin instalar nada. Con PyInstaller todo queda en un solo `.exe`. |
+
 ---
 
 ## 5. Validación de datos
@@ -303,11 +330,59 @@ El programa nunca se cierra por un dato mal ingresado: muestra los errores en ro
 | 1/x | −1, 2 | 0.0001 | Advertencia: la "raíz" queda fuera de [a, b] (asíntota) |
 | ln(x) | −1, 2 | 0.1 | Error: fuera del dominio |
 
-### 6.3 Pruebas automáticas
+### 6.3 Verificación con valores de referencia
+
+Los resultados del sistema se compararon con el valor exacto de cada raíz, obtenido sin usar el método de la secante:
+
+- **x³ − 4x − 1:** fórmula de Cardano (forma trigonométrica, porque tiene tres raíces reales): r = 2·√(4/3)·cos(⅓·arccos(3√3/16)) = 2.1149075414…
+- **cos(x) − x:** número de Dottie, 0.7390851332…
+- **e^(−x) − x:** constante omega, Ω = W(1) = 0.5671432904…
+- **x² − 2:** √2 = 1.4142135624…
+
+Los valores de referencia se pueden confirmar en GeoGebra (comando `Raíz(f, a, b)`) o en WolframAlpha.
+
+| f(x) | a, b | Error | Iteraciones | Raíz del sistema | Valor de referencia | \|raíz − referencia\| | \|f(raíz)\| |
+|---|---|---|---|---|---|---|---|
+| x³ − 4x − 1 | 2, 3 | 10⁻⁴ | 4 | 2.11489854 | 2.11490754 | 9.0 × 10⁻⁶ | 8.5 × 10⁻⁵ |
+| cos(x) − x | 0, 1 | 10⁻⁴ | 3 | 0.73911936 | 0.73908513 | 3.4 × 10⁻⁵ | 5.7 × 10⁻⁵ |
+| e^(−x) − x | 0, 1 | 10⁻⁶ | 4 | 0.56714331 | 0.56714329 | 1.6 × 10⁻⁸ | 2.5 × 10⁻⁸ |
+| x² − 2 | 1, 2 | 10⁻¹⁰ | 6 | 1.41421356 | 1.41421356 | < 10⁻¹⁵ | 4.4 × 10⁻¹⁶ |
+
+En todos los casos se cumple el test de parada (|f(raíz)| < error) y la raíz coincide con el valor de referencia en las cifras que garantiza el error pedido.
+
+### 6.4 Análisis del error y de la convergencia
+
+**Velocidad de convergencia.** Se resolvió f(x) = x³ − 4x − 1 con a = 2 y b = 3, pero con un error muy chico (10⁻¹²) para ver más iteraciones. e<sub>k</sub> = |x<sub>k+1</sub> − r| es la distancia a la raíz exacta r = 2.11490754147676:
+
+| k | x<sub>k+1</sub> | e<sub>k</sub> = \|x<sub>k+1</sub> − r\| | \|f(x<sub>k+1</sub>)\| | Orden estimado p |
+|---|---|---|---|---|
+| 0 | 2.066666666666667 | 4.8 × 10⁻² | 4.4 × 10⁻¹ | — |
+| 1 | 2.095087618500431 | 2.0 × 10⁻² | 1.8 × 10⁻¹ | — |
+| 2 | 2.115575069066892 | 6.7 × 10⁻⁴ | 6.3 × 10⁻³ | 3.81 |
+| 3 | 2.114898540057763 | 9.0 × 10⁻⁶ | 8.5 × 10⁻⁵ | 1.27 |
+| 4 | 2.114907537430406 | 4.0 × 10⁻⁹ | 3.8 × 10⁻⁸ | 1.79 |
+| 5 | 2.114907541476780 | 2.5 × 10⁻¹⁴ | 2.3 × 10⁻¹³ | 1.56 |
+
+El orden se estima con p ≈ ln(e<sub>k</sub> / e<sub>k−1</sub>) / ln(e<sub>k−1</sub> / e<sub>k−2</sub>). En las primeras iteraciones salta porque los valores todavía están lejos de la raíz. A medida que se acercan, p se estabiliza alrededor de **1.6**, que coincide con el orden teórico φ ≈ 1.618 (sección 2.8). Se ve en la tabla: el error pasa de 10⁻⁴ a 10⁻⁶, 10⁻⁹ y 10⁻¹⁴, y las cifras correctas se multiplican por ≈ 1.6 en cada paso. Por eso alcanzan 6 iteraciones para llegar a 10⁻¹².
+
+**Qué garantiza el test de parada.** El sistema corta cuando |f(x)| < error, pero eso no es lo mismo que |x − r| < error. Cerca de la raíz, f(x) ≈ f′(r)·(x − r), entonces:
+
+```
+              |f(x)|
+  |x − r| ≈ ----------
+              |f′(r)|
+```
+
+- En x³ − 4x − 1, f′(r) = 3r² − 4 ≈ 9.42. Con |f| = 8.5 × 10⁻⁵, la distancia a la raíz es ≈ 8.5 × 10⁻⁵ / 9.42 ≈ 9.0 × 10⁻⁶, igual a la diferencia medida en la sección 6.3.
+- En cos(x) − x, |f′(r)| = sin(r) + 1 ≈ 1.67, así que 5.7 × 10⁻⁵ / 1.67 ≈ 3.4 × 10⁻⁵, también igual a lo medido.
+
+Cuando |f′(r)| > 1 (la función corta el eje con pendiente pronunciada), la raíz es incluso más precisa que el error pedido. Cuando la función es muy plana cerca de la raíz (|f′(r)| < 1, o raíces múltiples con f′(r) = 0), el valor de x puede quedar más lejos de la raíz de lo que sugiere el error. Esta es una limitación del criterio, y por eso conviene pedir un error más chico en esos casos.
+
+### 6.5 Pruebas automáticas
 
 `python -m unittest discover -s tests -t .` ejecuta las 10 pruebas de `tests/test_metodos.py`: conversión de la función, f(2) = −1, cambio de signo, la fórmula a mano (31/15), el ejemplo completo, el corrimiento de a y b, la falta de cambio de signo, las validaciones y la advertencia de asíntota.
 
-### 6.4 Comparación con otros métodos (mismo problema)
+### 6.6 Comparación con otros métodos (mismo problema)
 
 ![Comparación de métodos](capturas/06-comparacion.png)
 
